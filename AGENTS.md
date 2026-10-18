@@ -1,6 +1,6 @@
-# Optimizador D1 — L0 Agent Router
+# OptiHelx — L0 Agent Router
 
-Suite de optimización y mantenimiento de Windows (Node.js/Express + React/Vite + Electron).
+Suite de optimización y mantenimiento de Windows (Node.js/Express + React/Vite + Tauri v2).
 
 ## Reglas Invariantes
 - **Cero Emojis**: Prohibido usar emojis en código, commits, respuestas o documentación.

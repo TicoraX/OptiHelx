@@ -4,7 +4,7 @@
 fn main() {
   std::panic::set_hook(Box::new(|info| {
     if let Ok(temp) = std::env::var("TEMP") {
-      let path = std::path::PathBuf::from(temp).join("optimizador-tauri-panic.log");
+      let path = std::path::PathBuf::from(temp).join("optihelx-tauri-panic.log");
       let _ = std::fs::write(path, format!("{:#?}", info));
     }
   }));

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // ponytail: override solo para el empaquetado Electron, donde __dirname cae dentro
 // de app.asar (solo lectura) y no hay carpetas de modulo reales para escribir reportes.
-export const PROJECT_ROOT = process.env.OPTIMIZADOR_DATA_DIR || resolve(__dirname, '..', '..');
+export const PROJECT_ROOT = process.env.OPTIHELX_DATA_DIR || process.env.OPTIMIZADOR_DATA_DIR || resolve(__dirname, '..', '..');
 
 // ── Resolver PATH completo del usuario ──
 // Cuando server.js arranca desde un proceso oculto, no hereda el PATH completo.

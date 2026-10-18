@@ -193,13 +193,34 @@ fn spawn_server() -> Result<ServerState, String> {
     }
 
     if let Ok(app_data) = std::env::var("APPDATA") {
-        let user_data = PathBuf::from(app_data).join("optimizador");
-        let _ = std::fs::create_dir_all(&user_data);
-        cmd.env("OPTIMIZADOR_DATA_DIR", user_data);
+        let optihelx_dir = PathBuf::from(&app_data).join("optihelx");
+        let legacy_dir = PathBuf::from(&app_data).join("optimizador");
+        let _ = std::fs::create_dir_all(&optihelx_dir);
+
+        // Migración transparente de histórico si optihelx está vacía y existía optimizador
+        if legacy_dir.exists() {
+            if let Ok(entries) = std::fs::read_dir(&optihelx_dir) {
+                if entries.count() == 0 {
+                    if let Ok(legacy_entries) = std::fs::read_dir(&legacy_dir) {
+                        for entry in legacy_entries.flatten() {
+                            let dest = optihelx_dir.join(entry.file_name());
+                            if let Ok(ft) = entry.file_type() {
+                                if ft.is_file() {
+                                    let _ = std::fs::copy(entry.path(), dest);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        cmd.env("OPTIHELX_DATA_DIR", &optihelx_dir);
+        cmd.env("OPTIMIZADOR_DATA_DIR", &optihelx_dir);
     }
 
     if let Ok(temp_dir) = std::env::var("TEMP") {
-        let log_path = PathBuf::from(temp_dir).join("optimizador-server.log");
+        let log_path = PathBuf::from(temp_dir).join("optihelx-server.log");
         if let Ok(file) = std::fs::OpenOptions::new()
             .create(true)
             .write(true)

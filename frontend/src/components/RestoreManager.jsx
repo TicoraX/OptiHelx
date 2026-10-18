@@ -5,7 +5,7 @@ export default function RestoreManager() {
   const [points, setPoints] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [description, setDescription] = useState('Optimizador D1 - Punto de Seguridad');
+  const [description, setDescription] = useState('OptiHelx - Punto de Seguridad');
   const [message, setMessage] = useState(null);
   const [error, setError] = useState(null);
 
@@ -100,7 +100,7 @@ export default function RestoreManager() {
             className="input-field"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Descripción (ej. Optimizador D1 Pre-Clean)"
+            placeholder="Descripción (ej. OptiHelx Pre-Clean)"
             disabled={creating}
             style={{
               flex: '1 1 300px',

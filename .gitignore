@@ -9,10 +9,13 @@ graphify-out/
 # Proyecto no relacionado que vive en este mismo directorio (su propio repo)
 Proyeccion 1/
 
-# Node
+# Node & Secrets
 node_modules/
 dist/
 dist-ssr/
+.env
+.env.*
+!.env.example
 
 # Logs y backups locales
 *.log

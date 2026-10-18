@@ -12,7 +12,7 @@ import { runShaderCacheActionNative } from './lib/shadercache.js';
 import { runDnsFlushActionNative } from './lib/dnsflush.js';
 
 // ═══════════════════════════════════════════════════════
-// Optimizador D1 — CLI Headless (server/cli.js)
+// OptiHelx — CLI Headless (server/cli.js)
 // ═══════════════════════════════════════════════════════
 
 const args = process.argv.slice(2);
@@ -27,7 +27,7 @@ const logProgress = isJson
 
 function printHelp() {
   console.log(`
-Uso: optimizador <comando> [opciones]
+Uso: optihelx <comando> [opciones]
 
 Comandos disponibles:
   status                Muestra el estado consolidado de todos los módulos
@@ -58,7 +58,7 @@ async function main() {
     if (isJson) {
       console.log(JSON.stringify(status, null, 2));
     } else {
-      console.log('=== ESTADO CONSOLIDADO DEL SISTEMA (Optimizador D1) ===');
+      console.log('=== ESTADO CONSOLIDADO DEL SISTEMA (OptiHelx) ===');
       console.log(`Módulos registrados: ${VALID_MODULES.length}`);
       for (const [key, data] of Object.entries(status)) {
         console.log(`  - [${key.padEnd(16)}] Último escaneo: ${data.lastScan || 'Pendiente'}`);
@@ -189,7 +189,7 @@ async function main() {
     return;
   }
 
-  console.error(`Comando desconocido: '${command}'. Usa 'optimizador --help' para ver la lista de comandos.`);
+  console.error(`Comando desconocido: '${command}'. Usa 'optihelx --help' para ver la lista de comandos.`);
   process.exit(1);
 }
 

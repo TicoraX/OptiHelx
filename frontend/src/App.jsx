@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import Dashboard from './components/Dashboard';
 import ReportViewer from './components/ReportViewer';
@@ -40,40 +40,64 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/status`);
-      if (!res.ok) throw new Error('Servidor remoto inalcanzable');
-      const data = await res.json();
-      setSystemStatus(data);
+  const isMountedRef = useRef(true);
+
+  const fetchStatus = useCallback(async ({ maxRetries = 0, retryDelay = 350, showSkeleton = false } = {}) => {
+    if (showSkeleton) {
+      setLoading(true);
       setError(null);
-      setIsOnline(true);
-    } catch (err) {
-      setError(err.message);
-      setIsOnline(false);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    let attempts = 0;
+    while (isMountedRef.current) {
+      try {
+        const res = await fetch(`${API_BASE}/status`);
+        if (!res.ok) throw new Error('Servidor remoto inalcanzable');
+        const data = await res.json();
+        if (!isMountedRef.current) return true;
+        setSystemStatus(data);
+        setError(null);
+        setIsOnline(true);
+        setLoading(false);
+        return true;
+      } catch (err) {
+        attempts++;
+        if (attempts <= maxRetries && isMountedRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        if (!isMountedRef.current) return false;
+        setError(err.message || 'Error de conexión con el backend');
+        setIsOnline(false);
+        setLoading(false);
+        return false;
+      }
+    }
+    return false;
+  }, []);
 
   useEffect(() => {
-    // `alive` evita setear estado si el componente se desmonta antes de que
-    // responda el primer fetch.
-    let alive = true;
-    const tick = async () => { if (alive) await fetchStatus(); };
+    isMountedRef.current = true;
 
-    tick();
-    const interval = setInterval(tick, 30000);
+    // Conexión inicial con reintentos silenciosos automáticos mientras arranca el subproceso Node (hasta ~10s)
+    fetchStatus({ maxRetries: 30, retryDelay: 350, showSkeleton: true });
+
+    // Polling periódico cada 30s sin activar skeleton
+    const interval = setInterval(() => {
+      fetchStatus({ maxRetries: 1, retryDelay: 500, showSkeleton: false });
+    }, 30000);
 
     // Canal para que ReportViewer pida un refresco al terminar una accion.
-    window.onDoneRefreshStatus = tick;
+    window.onDoneRefreshStatus = () => {
+      fetchStatus({ maxRetries: 2, retryDelay: 400, showSkeleton: false });
+    };
 
     return () => {
-      alive = false;
+      isMountedRef.current = false;
       clearInterval(interval);
       delete window.onDoneRefreshStatus;
     };
-  }, []);
+  }, [fetchStatus]);
 
   return (
     <BrowserRouter>
@@ -90,7 +114,7 @@ export default function App() {
         <nav className="navbar" aria-label="Principal">
           <div className="nav-logo">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
-            <span>Optimizador</span>
+            <span>OptiHelx</span>
           </div>
 
           {/* Botón rápido de búsqueda / Paleta de comandos */}
@@ -188,7 +212,7 @@ export default function App() {
                     systemStatus={systemStatus} 
                     loading={loading} 
                     error={error} 
-                    onRefreshStatus={fetchStatus} 
+                    onRefreshStatus={() => fetchStatus({ maxRetries: 25, retryDelay: 350, showSkeleton: true })} 
                   /> 
                 } 
               />

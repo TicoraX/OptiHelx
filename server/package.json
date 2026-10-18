@@ -1,9 +1,10 @@
 {
-  "name": "d1-automation-server",
+  "name": "optihelx-server",
   "version": "1.0.0",
   "description": "Backend para automatizaciones de sistema en Windows",
   "type": "module",
   "bin": {
+    "optihelx": "./cli.js",
     "optimizador": "./cli.js"
   },
   "scripts": {

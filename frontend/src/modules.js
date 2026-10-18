@@ -1,5 +1,5 @@
 /**
- * Registro declarativo de los módulos del Optimizador.
+ * Registro declarativo de los módulos de OptiHelx.
  *
  * `span` controla el area en el Bento: los modulos no importan todos igual.
  */

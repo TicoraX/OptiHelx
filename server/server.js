@@ -1,16 +1,15 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { randomUUID } from 'crypto';
 import { spawn } from 'child_process';
 import { readFileSync, existsSync, writeFileSync, statSync } from 'fs';
 import { join, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
 import {
-  PROJECT_ROOT, MODULES, TASK_TO_MODULE, VALID_MODULES, VALID_TASKS,
+  PROJECT_ROOT, MODULES, VALID_MODULES, VALID_TASKS,
   validateModule, validateDate, validateTask, validateTime, validateFrequency,
   validateWeekdays, validateIntervalDays, validateBooleanField, validateIndexList,
-  validateDays, validateMinRamMB, normalizeSchTaskStatus, loadJsonSafe,
+  validateDays, validateMinRamMB, normalizeSchTaskStatus,
   findLatestReport, buildReportPath, safeHandler, loadItems, getScanTimeline,
 } from './lib/shared.js';
 import { listAllChanges, undoChange } from './lib/changes.js';
@@ -534,7 +533,7 @@ function runNativeOverSSE(res, task, timeoutMs = 120000) {
 }
 
 app.post('/api/scan/:module', safeHandler((req, res) => {
-  const mod = validateModule(req.params.module);
+  validateModule(req.params.module);
   const handler = SCAN_HANDLERS[req.params.module];
   if (!handler) return res.status(400).json({ error: 'Modulo sin handler de escaneo' });
 
@@ -1265,7 +1264,7 @@ export function stopServer() {
 
 if (process.env.CLI_MODE !== 'true') {
   serverInstance = app.listen(PORT, HOST, () => {
-    console.log(`D1 Automation Server en http://${HOST}:${PORT}`);
+    console.log(`OptiHelx Automation Server en http://${HOST}:${PORT}`);
     console.log(`Root: ${PROJECT_ROOT}`);
     console.log(`Modulos: ${VALID_MODULES.join(', ')}`);
     console.log('Aceptando conexiones solo de localhost');
@@ -1273,7 +1272,7 @@ if (process.env.CLI_MODE !== 'true') {
 
   serverInstance.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`El puerto ${PORT} ya esta en uso: probablemente Optimizador ya esta abierto.`);
+      console.error(`El puerto ${PORT} ya esta en uso: probablemente OptiHelx ya esta abierto.`);
     } else {
       console.error(`Error del servidor: ${err.message}`);
     }
