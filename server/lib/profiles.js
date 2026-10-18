@@ -1,8 +1,6 @@
 import { runGamingActionNative } from './gaming.js';
-import { runTimersActionNative } from './timers.js';
-import { runWerFaultActionNative } from './werfault.js';
-import { runNetworkPrivacyActionNative } from './networkprivacy.js';
-import { runDnsFlushActionNative } from './dnsflush.js';
+import { runPrivacyActionNative } from './privacy.js';
+import { runNetworkActionNative } from './network.js';
 import { runCleanupActionNative } from './cleanup.js';
 import { runRamActionNative } from './ram.js';
 
@@ -17,36 +15,34 @@ export const PROFILES = [
   {
     id: 'gaming',
     name: 'Perfil Gaming / Máximo Rendimiento',
-    desc: 'Optimiza la latencia de entrada, activa HAGS, configura timers BCD de alta precisión y silencia diálogos de error para evitar caídas de FPS.',
+    desc: 'Optimiza la latencia de entrada, activa HAGS, suprime diálogos bloqueantes de error y libera memoria para evitar caídas de FPS.',
     icon: 'gaming',
     accent: 'var(--color-primary)',
     steps: [
       { module: 'gaming', params: { SETTINGS: 'hags,gamemode,gamedvr,fse,networkThrottle,systemResponsiveness' } },
-      { module: 'timers', params: { SETTINGS: 'disabledynamictick,useplatformclock' } },
-      { module: 'werfault', params: { SETTINGS: 'dontshowui,loggingdisabled' } },
+      { module: 'privacy', params: { SETTINGS: 'dontshowui,loggingdisabled' } },
       { module: 'ram', params: { CLEAN_MODE: 'soft', MIN_RAM_MB: '50', GLOBAL_OPTIMIZE: 'true' } },
     ],
   },
   {
     id: 'work',
     name: 'Perfil Oficina & Productividad',
-    desc: 'Equilibrio entre rendimiento y estabilidad: asegura la búsqueda local rápida de Windows Search y protege la privacidad de red.',
+    desc: 'Equilibrio entre rendimiento y estabilidad: asegura la resolución DNS limpia y protege la privacidad de red.',
     icon: 'work',
     accent: 'var(--color-success)',
     steps: [
-      { module: 'networkprivacy', params: { SETTINGS: 'wifisense,spotlight' } },
-      { module: 'dnsflush', params: { ACTIONS: 'flushdns' } },
+      { module: 'privacy', params: { SETTINGS: 'wifisense,spotlight' } },
+      { module: 'network', params: {} },
     ],
   },
   {
     id: 'battery',
     name: 'Perfil Laptop & Ahorro de Batería',
-    desc: 'Reduce la actividad de fondo innecesaria, suprime telemetría de red y minimiza la indexación en reposo para extender la autonomía.',
+    desc: 'Reduce la actividad de fondo innecesaria, suprime telemetría de red y minimiza la escritura continua en disco para extender la autonomía.',
     icon: 'battery',
     accent: 'var(--color-warning)',
     steps: [
-      { module: 'networkprivacy', params: { SETTINGS: 'wifisense,spotlight,edgepreloading' } },
-      { module: 'werfault', params: { SETTINGS: 'loggingdisabled' } },
+      { module: 'privacy', params: { SETTINGS: 'wifisense,spotlight,edgepreloading,loggingdisabled' } },
     ],
   },
   {
@@ -57,7 +53,7 @@ export const PROFILES = [
     accent: 'var(--color-info, #47bfff)',
     steps: [
       { module: 'cleanup', params: { CLEAN_CATEGORIES: 'devCache,temp' } },
-      { module: 'dnsflush', params: { ACTIONS: 'flushdns,registerdns' } },
+      { module: 'network', params: {} },
       { module: 'ram', params: { CLEAN_MODE: 'soft', MIN_RAM_MB: '50', GLOBAL_OPTIMIZE: 'true' } },
     ],
   },
@@ -103,14 +99,10 @@ export async function applyProfile(profileId, { dryRun = false } = {}, onOutput 
       let res;
       if (step.module === 'gaming') {
         res = await runGamingActionNative(envVars, onOutput);
-      } else if (step.module === 'timers') {
-        res = await runTimersActionNative(envVars, onOutput);
-      } else if (step.module === 'werfault') {
-        res = await runWerFaultActionNative(envVars, onOutput);
-      } else if (step.module === 'networkprivacy') {
-        res = await runNetworkPrivacyActionNative(envVars, onOutput);
-      } else if (step.module === 'dnsflush') {
-        res = await runDnsFlushActionNative(envVars, onOutput);
+      } else if (step.module === 'privacy') {
+        res = await runPrivacyActionNative(envVars, onOutput);
+      } else if (step.module === 'network') {
+        res = await runNetworkActionNative(envVars, onOutput);
       } else if (step.module === 'cleanup') {
         res = await runCleanupActionNative(envVars, onOutput);
       } else if (step.module === 'ram') {

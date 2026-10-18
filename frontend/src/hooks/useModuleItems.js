@@ -5,7 +5,7 @@ import { API_BASE } from '../config.js';
  * Gestiona el estado de items seleccionables de un módulo.
  *
  * Cubre el patrón repetido: fetch → items[] → selected{} → toggle → buildBody.
- * Los módulos con formas especiales (cleanup, startup, ram, power, adblock)
+ * Los módulos con formas especiales (cleanup, startup, ram, power)
  * NO usan este hook: su lógica no encaja en el shape genérico y forzarla
  * sería más código que el ahorro.
  */
@@ -21,13 +21,7 @@ const MODULE_CONFIG = {
   integrity:      { idKey: 'action',  defaultCheck: (it) => it.recommended !== false },
   contextmenu:    { idKey: 'regPath', defaultCheck: (it) => it.recommendedDisable === true },
   oemdebloat:     { idKey: 'serviceName', defaultCheck: (it) => it.recommendedManual === true },
-  timers:         { idKey: 'id',      defaultCheck: (it) => !it.isOptimized },
-  ghostdevices:   { idKey: 'id',      defaultCheck: () => false },
   searchindex:    { idKey: 'id',      defaultCheck: (it) => !it.isOptimized },
-  dnsflush:       { idKey: 'id',      defaultCheck: (it) => it.recommended === true },
-  networkprivacy: { idKey: 'id',      defaultCheck: (it) => !it.isOptimized },
-  pagefile:       { idKey: 'id',      defaultCheck: (it) => !it.isOptimized },
-  werfault:       { idKey: 'id',      defaultCheck: (it) => !it.isOptimized },
   smartdisk:      { idKey: 'id',      defaultCheck: () => true },
   shadercache:    { idKey: 'id',      defaultCheck: (it) => it.files > 0 },
   updates:        { idKey: 'id',      defaultCheck: (it) => it.recommendedUpdate !== false && !it.isUnknownVersion },

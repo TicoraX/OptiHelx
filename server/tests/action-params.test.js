@@ -4,18 +4,12 @@ import { runGamingActionNative } from '../lib/gaming.js';
 import { runIntegrityActionNative } from '../lib/integrity.js';
 import { runContextMenuActionNative } from '../lib/contextmenu.js';
 import { runOemDebloatActionNative } from '../lib/oemdebloat.js';
-import { runTimersActionNative } from '../lib/timers.js';
-import { runGhostDevicesActionNative } from '../lib/ghostdevices.js';
 import { runSearchIndexActionNative } from '../lib/searchindex.js';
-import { runDnsFlushActionNative } from '../lib/dnsflush.js';
-import { runNetworkPrivacyActionNative } from '../lib/networkprivacy.js';
-import { runPagefileActionNative } from '../lib/pagefile.js';
-import { runWerFaultActionNative } from '../lib/werfault.js';
 import { runStartupActionNative } from '../lib/startup.js';
 import { runServicesActionNative } from '../lib/services.js';
 import { runAppsActionNative } from '../lib/apps.js';
 
-describe('Validación de ejecución de acciones con parámetros (12 Módulos)', () => {
+describe('Validación de ejecución de acciones con parámetros (Módulos activos)', () => {
   it('gaming: ejecuta en dryRun con SETTINGS seleccionados y rechaza vacíos', async () => {
     const logs = [];
     await runGamingActionNative({ DRY_RUN: 'true', SETTINGS: 'gamemode,gamedvr' }, (msg) => logs.push(msg));
@@ -60,28 +54,6 @@ describe('Validación de ejecución de acciones con parámetros (12 Módulos)', 
     );
   });
 
-  it('timers: ejecuta en dryRun con SETTINGS seleccionados y rechaza vacíos', async () => {
-    const logs = [];
-    await runTimersActionNative({ DRY_RUN: 'true', SETTINGS: 'disabledynamictick' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando optimización de temporizadores')));
-
-    await assert.rejects(
-      async () => runTimersActionNative({ DRY_RUN: 'true', SETTINGS: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
-  it('ghostdevices: ejecuta en dryRun con DEVICES seleccionados y rechaza vacíos', async () => {
-    const logs = [];
-    await runGhostDevicesActionNative({ DRY_RUN: 'true', DEVICES: 'USB\\VID_TEST' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando purga de dispositivos fantasma')));
-
-    await assert.rejects(
-      async () => runGhostDevicesActionNative({ DRY_RUN: 'true', DEVICES: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
   it('searchindex: ejecuta en dryRun con SETTINGS seleccionados válidos', async () => {
     const logs = [];
     await runSearchIndexActionNative({ DRY_RUN: 'true', SETTINGS: 'disablewebsearch' }, (msg) => logs.push(msg));
@@ -89,50 +61,6 @@ describe('Validación de ejecución de acciones con parámetros (12 Módulos)', 
 
     await assert.rejects(
       async () => runSearchIndexActionNative({ DRY_RUN: 'true', SETTINGS: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
-  it('dnsflush: ejecuta en dryRun con ACTIONS seleccionadas y rechaza vacías', async () => {
-    const logs = [];
-    await runDnsFlushActionNative({ DRY_RUN: 'true', ACTIONS: 'flushdns' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando refresco y purga de caché DNS')));
-
-    await assert.rejects(
-      async () => runDnsFlushActionNative({ DRY_RUN: 'true', ACTIONS: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
-  it('networkprivacy: ejecuta en dryRun con SETTINGS seleccionados válidos', async () => {
-    const logs = [];
-    await runNetworkPrivacyActionNative({ DRY_RUN: 'true', SETTINGS: 'wifisense' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando protección de privacidad en red')));
-
-    await assert.rejects(
-      async () => runNetworkPrivacyActionNative({ DRY_RUN: 'true', SETTINGS: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
-  it('pagefile: ejecuta en dryRun con SETTINGS seleccionados válidos', async () => {
-    const logs = [];
-    await runPagefileActionNative({ DRY_RUN: 'true', SETTINGS: 'disablepagingexecutive' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando optimización de memoria virtual')));
-
-    await assert.rejects(
-      async () => runPagefileActionNative({ DRY_RUN: 'true', SETTINGS: '' }, () => {}),
-      { statusCode: 400 },
-    );
-  });
-
-  it('werfault: ejecuta en dryRun con SETTINGS seleccionados y rechaza vacíos', async () => {
-    const logs = [];
-    await runWerFaultActionNative({ DRY_RUN: 'true', SETTINGS: 'disabled' }, (msg) => logs.push(msg));
-    assert.ok(logs.some((l) => l.includes('Iniciando optimización de Windows Error Reporting')));
-
-    await assert.rejects(
-      async () => runWerFaultActionNative({ DRY_RUN: 'true', SETTINGS: '' }, () => {}),
       { statusCode: 400 },
     );
   });

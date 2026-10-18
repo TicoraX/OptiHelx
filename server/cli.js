@@ -4,12 +4,11 @@ import { getProfiles, applyProfile } from './lib/profiles.js';
 import { calculateHealthScore } from './lib/healthscore.js';
 import { getSystemTelemetry } from './lib/system.js';
 import { MODULES, VALID_MODULES } from './lib/shared.js';
-import { runGamingActionNative } from './lib/gaming.js';
 import { runCleanupActionNative } from './lib/cleanup.js';
 import { runRamActionNative } from './lib/ram.js';
 import { runSmartDiskActionNative } from './lib/smartdisk.js';
 import { runShaderCacheActionNative } from './lib/shadercache.js';
-import { runDnsFlushActionNative } from './lib/dnsflush.js';
+import { runNetworkActionNative } from './lib/network.js';
 
 // ═══════════════════════════════════════════════════════
 // OptiHelx — CLI Headless (server/cli.js)
@@ -175,10 +174,10 @@ async function main() {
     return;
   }
 
-  if (command === 'dns') {
+  if (command === 'dns' || command === 'network') {
     logProgress(`Purgando y refrescando caché DNS (dryRun: ${isDryRun})...`);
-    const res = await runDnsFlushActionNative(
-      { DRY_RUN: isDryRun ? 'true' : 'false', ACTIONS: 'flushdns,registers' },
+    const res = await runNetworkActionNative(
+      { DRY_RUN: isDryRun ? 'true' : 'false' },
       (line) => logProgress(`  ${line}`),
     );
     if (isJson) {

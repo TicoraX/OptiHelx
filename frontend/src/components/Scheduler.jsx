@@ -26,7 +26,7 @@ const AVAILABLE_PROFILES = [
   {
     id: 'gaming',
     name: 'Perfil Gaming & Latencia',
-    desc: 'Temporizadores de precisión, HAGS, GameDVR y supresión de WerFault para evitar caídas de FPS.',
+    desc: 'Aceleración GPU con HAGS, GameDVR y supresión de diálogos para evitar caídas de FPS.',
     defaultTime: '18:00',
     defaultDays: ['FRI', 'SAT'],
     color: 'oklch(70% 0.22 280)',

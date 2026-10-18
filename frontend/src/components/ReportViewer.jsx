@@ -83,9 +83,7 @@ export default function ReportViewer() {
   // Power (botones, no checkboxes)
   const [powerPlans, setPowerPlans] = useState([]);
 
-  // Adblock
-  const [adblockSources, setAdblockSources] = useState([]);
-  const [selectedSources, setSelectedSources] = useState({});
+
 
   // Network
   const [bufferbloat, setBufferbloat] = useState(false);
@@ -117,8 +115,6 @@ export default function ReportViewer() {
       setRiskyProcesses([]); setSelectedRiskyProcesses({});
     } else if (module === 'power') {
       setPowerPlans([]);
-    } else if (module === 'adblock') {
-      setAdblockSources([]); setSelectedSources({});
     }
   }, [module]);
 
@@ -153,9 +149,6 @@ export default function ReportViewer() {
       setSelectedRiskyProcesses(noneChecked(items.risky || []));
     } else if (module === 'power') {
       setPowerPlans(Array.isArray(items) ? items : []);
-    } else if (module === 'adblock') {
-      setAdblockSources(items.fuentes || []);
-      setSelectedSources(Object.fromEntries((items.fuentes || []).map((_, i) => [i, true])));
     } else {
       clearSpecialItems();
     }
@@ -229,9 +222,6 @@ export default function ReportViewer() {
              Object.values(selectedUnknownProcesses).some(Boolean) ||
              (riskyAck && Object.values(selectedRiskyProcesses).some(Boolean));
     }
-    if (module === 'adblock') {
-      return Object.values(selectedSources).some(Boolean);
-    }
     if (module === 'power') {
       return powerPlans.length > 0;
     }
@@ -251,7 +241,6 @@ export default function ReportViewer() {
     selectedUnknownProcesses,
     selectedRiskyProcesses,
     riskyAck,
-    selectedSources,
     powerPlans.length,
   ]);
 
@@ -268,7 +257,7 @@ export default function ReportViewer() {
   };
 
   // ── Action ──
-  const runAction = ({ dryRun = false, adblockAction } = {}) => {
+  const runAction = ({ dryRun = false } = {}) => {
     if (!hasSelected && module !== 'power' && module !== 'network') {
       setLogs([{
         type: 'error',
@@ -297,12 +286,6 @@ export default function ReportViewer() {
     }
 
     // Módulos especiales
-    if (module === 'adblock') {
-      body.adblockAction = adblockAction || 'apply';
-      body.sources = adblockSources
-        .filter((_, i) => selectedSources[i])
-        .map((f) => f.id);
-    }
     if (module === 'cleanup') {
       body.downloadsAgeDays = downloadsAgeDays;
       body.cleanCategories = availableCategories
@@ -857,42 +840,7 @@ export default function ReportViewer() {
             </div>
           )}
 
-          {/* ── Adblock: listas + botón quitar ── */}
-          {module === 'adblock' && (
-            <div className="form-group">
-              <label className="form-label">Listas a usar:</label>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-ink-3)', marginBottom: '0.75rem' }}>
-                Se descargan al aplicar. Windows va a pedir permiso de
-                administrador para escribir el archivo hosts.
-              </p>
-              <div className="checkbox-list">
-                {adblockSources.map((f, idx) => (
-                  <label key={f.id} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedSources[idx] || false}
-                      onChange={() => setSelectedSources(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                      disabled={isRunning}
-                    />
-                    <span className="checkbox-label" title={f.name}>
-                      {f.name}
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-ink-3)' }}>
-                        {f.desc}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <button
-                className="btn btn-danger"
-                style={{ width: '100%', marginTop: 'var(--space-4)' }}
-                onClick={() => runAction({ adblockAction: 'remove' })}
-                disabled={isRunning}
-              >
-                Quitar el bloqueo
-              </button>
-            </div>
-          )}
+
 
           {/* ── RAM: 3 tiers con controles especiales ── */}
           {module === 'ram' && (

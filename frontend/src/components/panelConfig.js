@@ -2,7 +2,7 @@
  * Descriptores de UI por módulo para el panel lateral del ReportViewer.
  *
  * Cada entrada describe cómo renderizar la lista de checkboxes del módulo.
- * Los módulos especiales (cleanup, startup, ram, power, adblock, network, updates)
+ * Los módulos especiales (cleanup, startup, ram, power, network, updates)
  * tienen JSX inline en ReportViewer porque su forma es genuinamente distinta.
  *
  * `bodyKey` es la clave del body que se manda al POST /api/action/:module.
@@ -84,74 +84,9 @@ export const GENERIC_PANEL_CONFIG = {
       subtitle: `${item.desc} · Actual: ${item.startMode}`,
     }),
   },
-  timers: {
-    label: 'Ajustes BCD de temporizador:',
-    hint: 'Seleccioná los parámetros de reloj a optimizar en el arranque de Windows:',
-    bodyKey: 'settings',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      title: item.name,
-      subtitle: `${item.desc} (Actual: ${item.currentValue})`,
-      statusColor: item.isOptimized ? 'var(--color-success)' : 'var(--color-warning)',
-    }),
-  },
-  ghostdevices: {
-    label: 'Dispositivos desconectados a purgar:',
-    hint: 'Seleccioná los registros de dispositivos periféricos desconectados para remover:',
-    bodyKey: 'devices',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      prefix: item.className,
-      title: item.name,
-      subtitle: item.id,
-    }),
-  },
   searchindex: {
     label: 'Directivas de Windows Search:',
     hint: 'Seleccioná las políticas de indexación y búsqueda a optimizar:',
-    bodyKey: 'settings',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      title: item.name,
-      subtitle: `${item.desc} (Estado: ${item.currentLabel})`,
-      statusColor: item.isOptimized ? 'var(--color-success)' : 'var(--color-warning)',
-    }),
-  },
-  dnsflush: {
-    label: 'Acciones de refresco de red:',
-    hint: 'Seleccioná las operaciones de limpieza y registro de red a ejecutar:',
-    bodyKey: 'actions',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      title: item.name,
-      subtitle: item.desc,
-    }),
-  },
-  networkprivacy: {
-    label: 'Directivas de Privacidad en Red:',
-    hint: 'Seleccioná las opciones de telemetría de red a proteger:',
-    bodyKey: 'settings',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      title: item.name,
-      subtitle: `${item.desc} (Estado: ${item.currentLabel})`,
-      statusColor: item.isOptimized ? 'var(--color-success)' : 'var(--color-warning)',
-    }),
-  },
-  pagefile: {
-    label: 'Directivas de Memoria Virtual:',
-    hint: 'Seleccioná las directivas de memoria y paginación a optimizar:',
-    bodyKey: 'settings',
-    bodyFormat: 'csv',
-    renderItem: (item) => ({
-      title: item.name,
-      subtitle: `${item.desc} (Estado: ${item.currentLabel})`,
-      statusColor: item.isOptimized ? 'var(--color-success)' : 'var(--color-warning)',
-    }),
-  },
-  werfault: {
-    label: 'Directivas de Windows Error Reporting:',
-    hint: 'Seleccioná las directivas de reporte de errores a optimizar:',
     bodyKey: 'settings',
     bodyFormat: 'csv',
     renderItem: (item) => ({

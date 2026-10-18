@@ -22,18 +22,11 @@ import { runServicesScanNative, runServicesActionNative } from './lib/services.j
 import { runPowerScanNative, runPowerActionNative } from './lib/power.js';
 import { runAppsScanNative, runAppsActionNative } from './lib/apps.js';
 import { runPrivacyScanNative, runPrivacyActionNative } from './lib/privacy.js';
-import { runAdblockScanNative, runAdblockActionNative, FUENTES_VALIDAS } from './lib/adblock.js';
 import { runGamingScanNative, runGamingActionNative } from './lib/gaming.js';
 import { runIntegrityScanNative, runIntegrityActionNative } from './lib/integrity.js';
 import { runContextMenuScanNative, runContextMenuActionNative } from './lib/contextmenu.js';
 import { runOemDebloatScanNative, runOemDebloatActionNative } from './lib/oemdebloat.js';
-import { runTimersScanNative, runTimersActionNative } from './lib/timers.js';
-import { runGhostDevicesScanNative, runGhostDevicesActionNative } from './lib/ghostdevices.js';
 import { runSearchIndexScanNative, runSearchIndexActionNative } from './lib/searchindex.js';
-import { runDnsFlushScanNative, runDnsFlushActionNative } from './lib/dnsflush.js';
-import { runNetworkPrivacyScanNative, runNetworkPrivacyActionNative } from './lib/networkprivacy.js';
-import { runPagefileScanNative, runPagefileActionNative } from './lib/pagefile.js';
-import { runWerFaultScanNative, runWerFaultActionNative } from './lib/werfault.js';
 import { runSmartDiskScanNative, runSmartDiskActionNative } from './lib/smartdisk.js';
 import { runShaderCacheScanNative, runShaderCacheActionNative } from './lib/shadercache.js';
 import { getSystemTelemetry } from './lib/system.js';
@@ -239,18 +232,11 @@ const SCAN_HANDLERS = {
   power: runPowerScanNative,
   apps: runAppsScanNative,
   privacy: runPrivacyScanNative,
-  adblock: runAdblockScanNative,
   gaming: runGamingScanNative,
   integrity: runIntegrityScanNative,
   contextmenu: runContextMenuScanNative,
   oemdebloat: runOemDebloatScanNative,
-  timers: runTimersScanNative,
-  ghostdevices: runGhostDevicesScanNative,
   searchindex: runSearchIndexScanNative,
-  dnsflush: runDnsFlushScanNative,
-  networkprivacy: runNetworkPrivacyScanNative,
-  pagefile: runPagefileScanNative,
-  werfault: runWerFaultScanNative,
   smartdisk: runSmartDiskScanNative,
   shadercache: runShaderCacheScanNative,
 };
@@ -280,18 +266,11 @@ const ACTION_HANDLERS = {
   power: runPowerActionNative,
   apps: runAppsActionNative,
   privacy: runPrivacyActionNative,
-  adblock: runAdblockActionNative,
   gaming: runGamingActionNative,
   integrity: runIntegrityActionNative,
   contextmenu: runContextMenuActionNative,
   oemdebloat: runOemDebloatActionNative,
-  timers: runTimersActionNative,
-  ghostdevices: runGhostDevicesActionNative,
   searchindex: runSearchIndexActionNative,
-  dnsflush: runDnsFlushActionNative,
-  networkprivacy: runNetworkPrivacyActionNative,
-  pagefile: runPagefileActionNative,
-  werfault: runWerFaultActionNative,
   smartdisk: runSmartDiskActionNative,
   shadercache: runShaderCacheActionNative,
 };
@@ -370,12 +349,9 @@ app.post('/api/quick-optimize', rateLimit({
         const env = { DRY_RUN: dryRun ? 'true' : 'false' };
         if (fix.module === 'cleanup') env.CLEAN_CATEGORIES = 'temp,recycle,cache';
         else if (fix.module === 'ram') { env.GLOBAL_OPTIMIZE = 'true'; env.CLEAN_MODE = 'soft'; }
-        else if (fix.module === 'privacy') env.OPTIMIZE_PRIVACY = '1,2,3,4,5,6,7,8';
+        else if (fix.module === 'privacy') env.OPTIMIZE_PRIVACY = '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16';
         else if (fix.module === 'gaming') env.SETTINGS = 'hags,gamemode,gamedvr,fse,networkThrottle,systemResponsiveness';
-        else if (fix.module === 'dnsflush') env.FLUSH_DNS = 'true';
-        else if (fix.module === 'networkprivacy') env.SETTINGS = 'telemetry_diag,ceip_optin,advertising_id,smartscreen_p2p';
-        else if (fix.module === 'pagefile') env.SETTINGS = 'disablepagingexecutive,largesystemcache,clearpagefile';
-        else if (fix.module === 'werfault') env.SETTINGS = 'disableerrorreporting,disablecrashdumps,disablecer,disablesqmlogger';
+        else if (fix.module === 'network') env.DRY_RUN = dryRun ? 'true' : 'false';
 
         await handler(env, (msg) => logs.push(msg));
 
@@ -609,30 +585,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     return [...new Set(picked)].join('|');
   };
 
-  // Adblock: la accion es un enum cerrado y las fuentes se validan contra la
-  // whitelist del modulo. Nada de esto se concatena en una URL ni en un
-  // comando; solo indexa objetos.
-  if (req.body?.adblockAction !== undefined) {
-    const a = String(req.body.adblockAction);
-    if (a !== 'apply' && a !== 'remove') {
-      const err = new Error('adblockAction: debe ser apply o remove');
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.ADBLOCK_ACTION = a;
-  }
 
-  if (req.body?.sources !== undefined) {
-    const picked = (Array.isArray(req.body.sources) ? req.body.sources : [])
-      .map((s) => String(s).trim());
-    const bad = picked.filter((s) => !FUENTES_VALIDAS.includes(s));
-    if (bad.length > 0) {
-      const err = new Error(`sources: fuente no permitida (${bad.join(', ')})`);
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.ADBLOCK_SOURCES = [...new Set(picked)].join(',');
-  }
 
   if (req.body?.programs !== undefined) {
     envVars.OPTIMIZE_PROGRAMS = validateIdList(req.body.programs, 'programs');
@@ -671,7 +624,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.SERVICES = joined;
   }
 
-  // Settings: IDs de directivas o ajustes (gaming, timers, searchindex, networkprivacy, pagefile, werfault)
+  // Settings: IDs de directivas o ajustes (gaming, privacy, searchindex)
   if (req.body?.settings !== undefined) {
     const raw = Array.isArray(req.body.settings)
       ? req.body.settings
@@ -686,7 +639,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.SETTINGS = [...new Set(picked)].join(',');
   }
 
-  // Actions: IDs de acciones para integrity y dnsflush
+  // Actions: IDs de acciones para integrity y smartdisk
   if (req.body?.actions !== undefined) {
     const raw = Array.isArray(req.body.actions)
       ? req.body.actions
@@ -725,20 +678,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.CACHES = [...new Set(picked)].join(',');
   }
 
-  // Devices: IDs de instancias de dispositivos para ghostdevices
-  if (req.body?.devices !== undefined) {
-    const raw = Array.isArray(req.body.devices)
-      ? req.body.devices
-      : String(req.body.devices || '').split(',');
-    const picked = raw.map((s) => String(s).trim()).filter(Boolean);
-    const bad = picked.filter((s) => s.length > 512 || /[\r\n]/.test(s));
-    if (bad.length > 0) {
-      const err = new Error('Identificadores de dispositivo invalidos');
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.DEVICES = [...new Set(picked)].join(',');
-  }
+
 
   // Disks: letras de unidad para smartdisk (ej. "C", "D:")
   if (req.body?.disks !== undefined) {
@@ -912,21 +852,13 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     ram: ['OPTIMIZE_PROCESSES', 'UNKNOWN_PROCESSES', 'RISKY_PROCESSES', 'GLOBAL_OPTIMIZE'],
     services: ['OPTIMIZE_SERVICES', 'SERVICES'],
     apps: ['OPTIMIZE_APPS', 'APPS'],
-    privacy: ['OPTIMIZE_PRIVACY', 'PRIVACY'],
+    privacy: ['OPTIMIZE_PRIVACY', 'PRIVACY', 'SETTINGS', 'ITEMS'],
     power: ['PLAN_GUID'],
-    // `remove` no lleva fuentes: quitar el bloqueo no necesita seleccion.
-    adblock: ['ADBLOCK_SOURCES', 'ADBLOCK_ACTION'],
     gaming: ['SETTINGS'],
     integrity: ['ACTIONS'],
     contextmenu: ['HANDLERS'],
     oemdebloat: ['SERVICES', 'OPTIMIZE_SERVICES'],
-    timers: ['SETTINGS'],
-    ghostdevices: ['DEVICES'],
     searchindex: ['SETTINGS'],
-    dnsflush: ['ACTIONS'],
-    networkprivacy: ['SETTINGS'],
-    pagefile: ['SETTINGS'],
-    werfault: ['SETTINGS'],
     smartdisk: ['ACTIONS', 'DISKS'],
     shadercache: ['CACHES'],
     updates: ['PACKAGES', 'ITEMS'],

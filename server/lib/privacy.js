@@ -2,7 +2,7 @@ import {
   spawnCapture, makeLogger, makeGuard, prepareReport, finishReport, errText,
 } from './shared.js';
 
-const PRIVACY_SETTINGS = [
+export const PRIVACY_SETTINGS = [
   { id: 'telemetry', name: 'Telemetría', desc: 'Envío de datos de diagnóstico',
     key: 'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection',
     value: 'AllowTelemetry', type: 'REG_DWORD', safeValue: '0' },
@@ -27,6 +27,30 @@ const PRIVACY_SETTINGS = [
   { id: 'microphone', name: 'Micrófono', desc: 'Acceso a micrófono',
     key: 'HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone',
     value: 'Value', type: 'REG_SZ', safeValue: 'Deny' },
+  { id: 'wifisense', name: 'WiFi Sense', desc: 'Conexión automática a redes abiertas y compartición de credenciales',
+    key: 'HKLM\\Software\\Microsoft\\WcmSvc\\wifinetworkmanager\\config',
+    value: 'AutoConnectAllowedOEM', type: 'REG_DWORD', safeValue: '0' },
+  { id: 'spotlight', name: 'Windows Spotlight en red', desc: 'Descarga silenciosa de fondos y sugerencias en pantalla de bloqueo',
+    key: 'HKCU\\Software\\Policies\\Microsoft\\Windows\\CloudContent',
+    value: 'DisableWindowsSpotlightFeatures', type: 'REG_DWORD', safeValue: '1' },
+  { id: 'consumercontent', name: 'Apps promocionadas', desc: 'Instalación silenciosa de aplicaciones promocionadas en segundo plano',
+    key: 'HKCU\\Software\\Policies\\Microsoft\\Windows\\CloudContent',
+    value: 'DisableWindowsConsumerFeatures', type: 'REG_DWORD', safeValue: '1' },
+  { id: 'edgepreloading', name: 'Pre-carga de Microsoft Edge', desc: 'Pre-resolución DNS y conexiones de red en segundo plano',
+    key: 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge',
+    value: 'NetworkPredictionOptions', type: 'REG_DWORD', safeValue: '2' },
+  { id: 'wer_disabled', aliases: ['disabled'], name: 'Reporte de errores (WER)', desc: 'Envío de diagnósticos de cuelgues y fallos a Microsoft',
+    key: 'HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting',
+    value: 'Disabled', type: 'REG_DWORD', safeValue: '1' },
+  { id: 'wer_dontshowui', aliases: ['dontshowui'], name: 'Suprimir diálogos de cuelgue', desc: 'Evita ventanas emergentes bloqueantes ante procesos colgados',
+    key: 'HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting',
+    value: 'DontShowUI', type: 'REG_DWORD', safeValue: '1' },
+  { id: 'wer_dontsenddata', aliases: ['dontsenddata'], name: 'Bloquear minidumps adicionales', desc: 'Impide envío de volcados de memoria y telemetría de fallos',
+    key: 'HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting',
+    value: 'DontSendAdditionalData', type: 'REG_DWORD', safeValue: '1' },
+  { id: 'wer_loggingdisabled', aliases: ['loggingdisabled'], name: 'Silenciar registros WER en disco', desc: 'Reduce desgaste I/O evitando logs continuos de fallos en el visor de sucesos',
+    key: 'HKLM\\SOFTWARE\\Microsoft\\Windows\\Windows Error Reporting',
+    value: 'LoggingDisabled', type: 'REG_DWORD', safeValue: '1' },
 ];
 
 function readRegValue(key, val) {
@@ -121,7 +145,9 @@ export async function runPrivacyActionNative(envVars, onOutput, onProgress) {
 
   writeLog(`=== Protección de privacidad - inicio${dryRun ? ' (SIMULACION)' : ''} ===`);
 
-  const rawSelection = String(envVars?.OPTIMIZE_PRIVACY || envVars?.PRIVACY || envVars?.ITEMS || '').trim();
+  const rawSelection = String(
+    envVars?.OPTIMIZE_PRIVACY || envVars?.PRIVACY || envVars?.SETTINGS || envVars?.ITEMS || '',
+  ).trim();
   const tokens = rawSelection.split(',').map((s) => s.trim()).filter(Boolean);
 
   const targets = [];
@@ -134,7 +160,10 @@ export async function runPrivacyActionNative(envVars, onOutput, onProgress) {
         setting = PRIVACY_SETTINGS[num - 1];
       }
     } else {
-      setting = PRIVACY_SETTINGS.find((s) => s.id.toLowerCase() === token.toLowerCase()) || null;
+      const lower = token.toLowerCase();
+      setting = PRIVACY_SETTINGS.find(
+        (s) => s.id.toLowerCase() === lower || (s.aliases && s.aliases.includes(lower)),
+      ) || null;
     }
 
     if (setting && !seenIds.has(setting.id)) {

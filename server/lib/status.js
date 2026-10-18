@@ -157,27 +157,13 @@ export function getConsolidatedStatus() {
     privacy: (() => {
       const p = loadJsonSafe(
         join(MODULES.privacy.dir, 'reports', MODULES.privacy.countsFile),
-        { date: null, total_settings: 8, hardened_count: 0, error: true },
+        { date: null, total_settings: 16, hardened_count: 0, error: true },
       );
       return {
         lastScan: p.date,
-        totalSettings: p.total_settings || 8,
+        totalSettings: p.total_settings || 16,
         hardenedCount: p.hardened_count || 0,
         error: p.error,
-      };
-    })(),
-    adblock: (() => {
-      const a = loadJsonSafe(
-        join(MODULES.adblock.dir, 'reports', MODULES.adblock.countsFile),
-        { date: null, activo: false, blockedDomains: 0, listDomains: 0, listAgeDays: null, error: true },
-      );
-      return {
-        lastScan: a.date,
-        activo: a.activo === true,
-        blockedDomains: a.blockedDomains || 0,
-        listDomains: a.listDomains || 0,
-        listAgeDays: a.listAgeDays,
-        error: a.error,
       };
     })(),
     gaming: (() => {
@@ -232,31 +218,6 @@ export function getConsolidatedStatus() {
         error: o.error,
       };
     })(),
-    timers: (() => {
-      const t = loadJsonSafe(
-        join(MODULES.timers.dir, 'reports', MODULES.timers.countsFile),
-        { date: null, optimizedCount: 0, pendingCount: 0, total: 3, error: true },
-      );
-      return {
-        lastScan: t.date,
-        optimizedCount: t.optimizedCount || 0,
-        pendingCount: t.pendingCount || 0,
-        total: t.total || 3,
-        error: t.error,
-      };
-    })(),
-    ghostdevices: (() => {
-      const g = loadJsonSafe(
-        join(MODULES.ghostdevices.dir, 'reports', MODULES.ghostdevices.countsFile),
-        { date: null, totalCount: 0, safeCount: 0, error: true },
-      );
-      return {
-        lastScan: g.date,
-        totalCount: g.totalCount || 0,
-        safeCount: g.safeCount || 0,
-        error: g.error,
-      };
-    })(),
     searchindex: (() => {
       const s = loadJsonSafe(
         join(MODULES.searchindex.dir, 'reports', MODULES.searchindex.countsFile),
@@ -268,57 +229,6 @@ export function getConsolidatedStatus() {
         pendingCount: s.pendingCount || 0,
         total: s.total || 4,
         error: s.error,
-      };
-    })(),
-    dnsflush: (() => {
-      const d = loadJsonSafe(
-        join(MODULES.dnsflush.dir, 'reports', MODULES.dnsflush.countsFile),
-        { date: null, cachedCount: 0, totalActions: 4, error: true },
-      );
-      return {
-        lastScan: d.date,
-        cachedCount: d.cachedCount || 0,
-        totalActions: d.totalActions || 4,
-        error: d.error,
-      };
-    })(),
-    networkprivacy: (() => {
-      const n = loadJsonSafe(
-        join(MODULES.networkprivacy.dir, 'reports', MODULES.networkprivacy.countsFile),
-        { date: null, protectedCount: 0, exposedCount: 0, total: 4, error: true },
-      );
-      return {
-        lastScan: n.date,
-        protectedCount: n.protectedCount || 0,
-        exposedCount: n.exposedCount || 0,
-        total: n.total || 4,
-        error: n.error,
-      };
-    })(),
-    pagefile: (() => {
-      const p = loadJsonSafe(
-        join(MODULES.pagefile.dir, 'reports', MODULES.pagefile.countsFile),
-        { date: null, optimizedCount: 0, pendingCount: 0, total: 3, error: true },
-      );
-      return {
-        lastScan: p.date,
-        optimizedCount: p.optimizedCount || 0,
-        pendingCount: p.pendingCount || 0,
-        total: p.total || 3,
-        error: p.error,
-      };
-    })(),
-    werfault: (() => {
-      const w = loadJsonSafe(
-        join(MODULES.werfault.dir, 'reports', MODULES.werfault.countsFile),
-        { date: null, optimizedCount: 0, pendingCount: 0, total: 4, error: true },
-      );
-      return {
-        lastScan: w.date,
-        optimizedCount: w.optimizedCount || 0,
-        pendingCount: w.pendingCount || 0,
-        total: w.total || 4,
-        error: w.error,
       };
     })(),
     smartdisk: (() => {

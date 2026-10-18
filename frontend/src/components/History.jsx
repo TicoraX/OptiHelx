@@ -37,10 +37,6 @@ function renderTimelineSummary(moduleKey, counts = {}) {
       return counts.thirdParty != null
         ? `${counts.thirdParty} servicios de terceros detectados`
         : 'Servicios analizados';
-    case 'adblock':
-      return counts.rulesCount != null
-        ? `${counts.rulesCount} reglas de bloqueo activas`
-        : 'Hosts auditados';
     default:
       return 'Reporte generado con éxito';
   }

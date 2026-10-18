@@ -37,4 +37,14 @@ describe('Optimizador de Privacidad del Sistema (privacy.js)', () => {
     }, (msg) => dupLogs.push(msg));
     assert.ok(dupLogs.some((l) => l.includes('Simulacion: 1 ajustes se protegerian')));
   });
+
+  it('soporta directivas de red y WER consolidadas mediante aliases y nombres', async () => {
+    const logs = [];
+    await runPrivacyActionNative({
+      DRY_RUN: 'true',
+      SETTINGS: 'wifisense,spotlight,disabled,dontshowui',
+    }, (msg) => logs.push(msg));
+
+    assert.ok(logs.some((l) => l.includes('Simulacion: 4 ajustes se protegerian')));
+  });
 });
