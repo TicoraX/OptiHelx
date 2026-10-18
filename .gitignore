@@ -29,3 +29,6 @@ resources/node/
 
 # Brag video outputs
 brag-output/
+
+# Internal planning, agent maps and specs. Kept on disk, not published.
+docs/

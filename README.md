@@ -1,174 +1,167 @@
-# Optimizador — Suite Integral de Mantenimiento y Optimización para Windows
+# OptiHelx
 
-Conjunto de herramientas de optimización y mantenimiento de alto rendimiento para Windows: **23 módulos nativos en Node.js**, motor de perfiles de optimización en 1 clic, interfaz CLI headless para terminal, minimizado a la bandeja del sistema (System Tray), telemetría de hardware en tiempo real, cálculo de Health Score, gestión de puntos de restauración, paleta de comandos rápida (`Ctrl+K`) y panel de control de escritorio (React + Vite + Electron con elevación administrativa UAC).
+**English** · [Español](README.es.md)
 
-> Todo el procesamiento y almacenamiento de reportes se ejecuta **localmente en tu equipo**. Sin servicios en la nube ni telemetría propia hacia servidores externos (únicamente *Update Checker* consulta gestores oficiales de paquetes y *AdBlock* descarga listas de dominios públicas).
+OptiHelx is a maintenance and optimization toolkit for Windows. It has 23 modules written in Node.js, one-click optimization profiles, a headless CLI, live hardware stats, a Health Score, a restore point manager, a command palette (`Ctrl+K`) and a React dashboard that runs as a desktop app (Tauri v2 or Electron) or in the browser.
 
----
+> All processing and report storage happen on your machine. There is no cloud service and no telemetry. Only two modules reach the network: Update Checker queries the official package managers, and AdBlock downloads public domain lists.
 
-## Qué hace (23 Módulos Nativos)
+## Modules
 
-| Módulo | Qué hace |
+| Module | What it does |
 |---|---|
-| **Update Checker** | Busca actualizaciones en winget (apps/drivers), pip, npm global y Chocolatey en paralelo con `Promise.all`. |
-| **Disk Cleanup** | Escanea y limpia archivos temporales, papelera de reciclaje y cachés de desarrollo (`uv`, `pnpm`, `cargo`) y navegadores (`Chrome`, `Edge`, `Firefox`, `Arc`, `Vivaldi`, `Opera`). |
-| **Startup Optimizer** | Audita y deshabilita programas, servicios auto-start y tareas de inicio de sesión con manifiesto de reactivación y soporte `dryRun`. |
-| **RAM Optimizer** | Análisis instantáneo de consumo de memoria y clasificación por nivel de riesgo (seguro, riesgoso, crítico de sistema). |
-| **Network Optimizer** | Diagnostica conectividad, latencia, recuento de caché DNS y adaptadores de red. Permite purga y re-registro. |
-| **Services Optimizer** | Lista y clasifica servicios automáticos distinguiendo Microsoft de terceros. Permite detener y deshabilitar servicios innecesarios. |
-| **Power Optimizer** | Monitorea el plan activo, batería y consumo estimado. Permite cambio de esquema con reversibilidad atómica en el historial. |
-| **App Manager** | Lista aplicaciones instaladas mediante winget y permite desinstalación silenciosa por lotes. |
-| **Privacy Optimizer** | Audita y endurece directivas de privacidad de Windows (telemetría, publicidad, Cortana, sensores, diagnósticos). |
-| **AdBlock Optimizer** | Bloquea dominios de telemetría y publicidad inyectando fuentes curadas (`adaway`, `danpollock`, `stevenblack`) en el archivo hosts con backup automático. |
-| **Gaming Mode** | Optimiza el sistema para juegos: HAGS, GameDVR, optimizaciones de pantalla completa (FSE), DirectStorage y prioridad de GPU. |
-| **System Integrity** | Ejecuta verificaciones y reparaciones del almacén de componentes de Windows mediante SFC y DISM con seguimiento en vivo. |
-| **Context Menu** | Limpia entradas residuales e innecesarias del menú contextual de Windows sin tocar las del sistema operativo. |
-| **OEM Debloat** | Identifica y neutraliza software preinstalado de fabricantes (Dell, HP, Lenovo, ASUS, Acer) sin afectar controladores. |
-| **System Timers** | Optimiza la latencia de interrupciones y precisión del reloj BCD (`useplatformclock`, `syntheticclock`, `tscsyncpolicy`). |
-| **Ghost Devices** | Detecta dispositivos de hardware desconectados o duplicados en el Administrador de Dispositivos con protección de buses de sistema (`PCI\`, `HTREE\`, `UEFI\`). |
-| **Search Indexer** | Optimiza el servicio Windows Search y desactiva la búsqueda web/Bing en el menú Inicio para acelerar búsquedas locales. |
-| **DNS Flush** | Purga la caché de resolución DNS y re-registra nombres de host para resolver problemas de conexión. |
-| **Network Privacy** | Desactiva protocolos de red inseguros o con fugas de datos (LLMNR, NetBIOS, WPAD, sondeo activo NCSI). |
-| **Virtual Memory / Pagefile** | Diagnostica la memoria paginada, paginación del kernel y directivas de administración de memoria. |
-| **WerFault Optimizer** | Suprime cuadros de diálogo de cuelgue, generación de minidumps masivos y telemetría de errores de Windows. |
-| **SSD Health & TRIM** | Diagnóstico de salud SMART de unidades físicas, verificación de activación TRIM y optimización de desgaste de celdas SSD (`defrag.exe /O /C`). |
-| **GPU Shader Cache** | Localiza y purga cachés residuales de sombreadores DirectX, NVIDIA, AMD e Intel para corregir stuttering tras actualizar drivers. |
+| Update Checker | Checks winget (apps and drivers), pip, global npm and Chocolatey for updates in parallel. |
+| Disk Cleanup | Scans and cleans temp files, the recycle bin, developer caches (`uv`, `pnpm`, `cargo`) and browser caches (Chrome, Edge, Firefox, Arc, Vivaldi, Opera). |
+| Startup Optimizer | Audits and disables startup programs, auto-start services and logon tasks. Keeps a manifest to re-enable them and supports `dryRun`. |
+| RAM Optimizer | Shows memory use per process and sorts processes by risk: safe, risky, or critical to the system. |
+| Network Optimizer | Checks connectivity, latency, DNS cache size and network adapters. Can flush and re-register. |
+| Services Optimizer | Lists automatic services, separating Microsoft from third-party ones. Can stop and disable the ones you pick. |
+| Power Optimizer | Shows the active power plan, battery state and estimated draw. Switches plans and records the change so it can be undone. |
+| App Manager | Lists installed apps through winget and uninstalls them silently in batches. |
+| Privacy Optimizer | Audits and tightens Windows privacy policies (telemetry, advertising ID, Cortana, sensors, diagnostics). |
+| AdBlock Optimizer | Blocks telemetry and ad domains by writing curated lists (`adaway`, `danpollock`, `stevenblack`) into the hosts file, with an automatic backup. |
+| Gaming Mode | Tunes the system for games: HAGS, GameDVR, fullscreen optimizations, DirectStorage and GPU priority. |
+| System Integrity | Runs SFC and DISM checks and repairs on the Windows component store with live progress. |
+| Context Menu | Removes leftover and unneeded entries from the Windows context menu without touching the system ones. |
+| OEM Debloat | Finds and disables preinstalled vendor software (Dell, HP, Lenovo, ASUS, Acer) without touching drivers. |
+| System Timers | Adjusts interrupt latency and BCD clock settings (`useplatformclock`, `syntheticclock`, `tscsyncpolicy`). |
+| Ghost Devices | Finds disconnected or duplicate devices in Device Manager and skips system buses (`PCI\`, `HTREE\`, `UEFI\`). |
+| Search Indexer | Tunes the Windows Search service and turns off web and Bing results in the Start menu. |
+| DNS Flush | Flushes the DNS resolver cache and re-registers host names. |
+| Network Privacy | Turns off network protocols that leak data or are insecure (LLMNR, NetBIOS, WPAD, active NCSI probing). |
+| Virtual Memory / Pagefile | Reports on the pagefile, kernel paging and memory management policies. |
+| WerFault Optimizer | Suppresses crash dialogs, large minidump generation and Windows error telemetry. |
+| SSD Health & TRIM | Reads SMART health for physical drives, checks that TRIM is on and runs `defrag.exe /O /C`. |
+| GPU Shader Cache | Finds and clears DirectX, NVIDIA, AMD and Intel shader caches, which helps with stutter after a driver update. |
 
-Cada módulo sigue el mismo patrón:
-- **Scan** — lee el sistema y genera un reporte en Markdown, un JSON de conteos y un JSON de elementos seleccionables. No modifica nada.
-- **Acción** — toca solo lo que seleccionaste. Se puede simular con `dryRun` antes de aplicar, y cada cambio queda registrado en el historial de cambios (`changes.json`) con soporte de reversión atómica (`undo`).
+Every module follows the same pattern:
 
----
+- Scan reads the system and writes a Markdown report, a JSON file of counts and a JSON file of selectable items. It changes nothing.
+- Action only touches what you selected. You can preview it with `dryRun` first, and every applied change goes into a change log (`changes.json`) so you can undo it.
 
-## Características Principales
+## Features
 
-- **Perfiles de Optimización en 1 Clic**: Presets configurados para escenarios frecuentes (Gaming, Oficina & Productividad, Laptop & Batería, Desarrollador & Compilación) con ejecución encadenada y simulación `dryRun`.
-- **CLI Headless para Terminal (`server/cli.js`)**: Ejecución de comandos de diagnóstico, limpieza, optimización de RAM, TRIM y perfiles desde PowerShell/CMD sin interfaz gráfica.
-- **Bandeja del Sistema (System Tray)**: La aplicación de escritorio minimiza a segundo plano sin interrumpir procesos, ofreciendo acciones rápidas de optimización desde el menú contextual del icono en la barra de tareas.
-- **Telemetría de Hardware en Vivo**: Monitoreo en tiempo real de CPU (uso %, núcleos, GHz, curva histórica SVG), Memoria RAM (usada, libre, %, sparkline en vivo), Almacenamiento Local (espacio libre por partición) y Red & Conectividad (adaptadores activos, IP local, hostname).
-- **Paleta Global de Comandos (`Ctrl+K` / `Cmd+K`)**: Buscador instantáneo por teclado para navegar a cualquier módulo, vista principal, alternar modo claro/oscuro o exportar reportes.
-- **Health Score & Quick Optimize**: Algoritmo ponderado (0 a 100) que califica la salud general del sistema y ofrece optimización en 1 clic de los módulos más seguros.
-- **Cazador de Archivos Grandes (Large Files Hunter)**: Localiza archivos pesados (>100MB) y permite abrirlos directamente en el Explorador de Windows.
-- **Gestor de Puntos de Restauración**: Creación, listado y consulta de puntos de restauración de Windows con control de throttling.
-- **Elevación Administrativa Integrada (UAC)**: Manifiesto `requireAdministrator` en el instalador de Electron para garantizar que las operaciones sobre el registro del sistema, servicios y BCD se ejecuten sin errores de permisos.
+- One-click profiles for common setups (Gaming, Office, Laptop and battery, Developer). Each profile chains several actions and supports `dryRun`.
+- A headless CLI (`server/cli.js`) runs diagnostics, cleanup, RAM optimization, TRIM and profiles from PowerShell or CMD.
+- The Electron build minimizes to the system tray and offers quick actions from the tray icon menu.
+- Live hardware stats: CPU (usage, cores, clock speed, history chart), RAM (used, free, live sparkline), free space per drive, and active network adapters with local IP and hostname.
+- A command palette (`Ctrl+K` / `Cmd+K`) jumps to any module or view, toggles light and dark mode, and exports reports.
+- A Health Score from 0 to 100 rates the overall state of the system, and Quick Optimize runs the safest modules in one click.
+- Large Files Hunter finds big files (threshold selectable from 100 MB to 5 GB, 250 MB by default) and opens them in File Explorer.
+- A restore point manager creates and lists Windows restore points. Windows itself allows at most one automatic restore point every 24 hours.
 
----
+## CLI
 
-## Uso por Terminal (CLI Headless)
-
-El backend incluye una herramienta CLI para ejecutar diagnósticos y mantenimientos directamente desde la terminal:
+The backend ships a CLI to run diagnostics and maintenance from a terminal:
 
 ```powershell
-# Ver estado consolidado de todos los módulos
+# Combined status of all modules
 node server/cli.js status
 
-# Calcular Health Score y ver acciones recomendadas
+# Health Score and recommended actions
 node server/cli.js health
 
-# Listar perfiles disponibles
+# List available profiles
 node server/cli.js profiles
 
-# Aplicar perfil Gaming en modo simulación (dryRun)
+# Preview the Gaming profile without changing anything
 node server/cli.js profile gaming --dry-run
 
-# Aplicar perfil Gaming en modo real
+# Apply the Gaming profile
 node server/cli.js profile gaming
 
-# Ejecutar limpieza segura de temporales
+# Clean temp files
 node server/cli.js clean
 
-# Ejecutar optimización de memoria RAM
+# Optimize RAM
 node server/cli.js ram
 
-# Ejecutar TRIM en unidades SSD
+# Run TRIM on SSDs
 node server/cli.js trim
 
-# Purgar caché de sombreadores de GPU
+# Clear GPU shader caches
 node server/cli.js shaders
 ```
 
----
-
-## Estructura del proyecto
+## Project layout
 
 ```
-Optimizador/
+OptiHelx/
 ├── server/
-│   ├── server.js            # Express: rutas, seguridad, SSE, rate limiting
-│   ├── cli.js               # CLI Headless para terminal
-│   ├── lib/                 # La logica de los 23 modulos, 100% nativa en Node.js
-│   │   ├── shared.js        # Whitelist, validadores, spawn, barrera y diario
-│   │   ├── changes.js       # Reversion atomica de cambios aplicados
-│   │   ├── status.js        # Estado consolidado desacoplado
-│   │   ├── profiles.js      # Motor de perfiles de optimización
-│   │   ├── smartdisk.js     # Módulo SMART SSD y TRIM
-│   │   ├── shadercache.js   # Módulo de purga de caché de shaders GPU
-│   │   └── <modulo>.js      # Un archivo por modulo: scan + accion
-│   └── tests/               # Suites de pruebas unitarias y de integracion E2E
+│   ├── server.js            # Express: routes, security, SSE, rate limiting
+│   ├── cli.js               # Headless CLI
+│   ├── lib/                 # Logic for the 23 modules, plain Node.js
+│   │   ├── shared.js        # Module whitelist, validators, spawn helpers, change log
+│   │   ├── changes.js       # Undo for applied changes
+│   │   ├── status.js        # Combined status
+│   │   ├── profiles.js      # Optimization profiles
+│   │   ├── smartdisk.js     # SMART and TRIM module
+│   │   ├── shadercache.js   # GPU shader cache module
+│   │   └── <module>.js      # One file per module: scan + action
+│   └── tests/               # Unit and integration tests
 ├── frontend/                # React + Vite
-│   ├── src/modules.js       # Registro declarativo de los 23 modulos
-│   ├── src/styles/tokens.css# Sistema de diseno (color, espaciado, tipografia)
-│   └── src/components/      # Componentes UI desacoplados y modulares
-├── electron/                # App de escritorio (Electron + Tray + electron-updater)
-├── scripts/Notify.ps1       # Tareas programadas de notificaciones semanales
-└── <modulo>/reports/        # Reportes, conteos, items, logs y diario de cambios
+│   ├── src/modules.js       # Declarative registry of the 23 modules
+│   ├── src/styles/tokens.css# Design tokens (color, spacing, type)
+│   └── src/components/      # UI components
+├── src-tauri/               # Tauri v2 desktop shell (bundles node.exe and the server)
+├── electron/                # Electron desktop shell (tray, electron-updater)
+├── scripts/Notify.ps1       # Scheduled weekly notifications
+└── <module>/reports/        # Reports, counts, items, logs and change log
 ```
 
----
+## Requirements
 
-## Requisitos
+- Windows 10 or 11 (64-bit)
+- [Node.js 20+](https://nodejs.org/) and `npm >= 9`
+- For the Tauri build: the Rust toolchain
+- Optional, depending on the module: `winget`, `pip`, `npm`, `choco`. Missing ones are skipped without an error.
 
-- Windows 10 u 11 (64-bit)
-- [Node.js 20+](https://nodejs.org/) y `npm >= 9`
-- Opcionales, según el módulo: `winget`, `pip`, `npm`, `choco`. Los que falten se omiten sin error.
+## Quick start: desktop app
 
----
-
-## Inicio rápido — App de escritorio (Electron)
-
-La forma más simple de correr el proyecto: una sola app instalable que empaqueta el backend y el dashboard, con elevación UAC y auto-actualización vía GitHub Releases.
+Clone and install:
 
 ```powershell
-git clone https://github.com/TicoraX/Optimizador.git
-cd Optimizador
-npm ci                     # instalacion reproducible desde lockfile
-npm run build:frontend     # compila el frontend y dependencias
-npx electron .              # abre la app
+git clone https://github.com/TicoraX/OptiHelx.git
+cd OptiHelx
+npm ci                     # reproducible install from the lockfile
+npm run build:frontend     # builds the frontend
 ```
 
-Para generar el instalador `.exe`:
+Tauri v2 (the shell used for the v1.5.0 NSIS installer):
 
 ```powershell
-npm run dist       # genera el instalador en dist/, sin publicar
-npm run release    # genera y lo publica como GitHub Release (requiere GITHUB_TOKEN con permiso repo)
+npm run tauri:dev          # run in development
+npm run tauri:build        # build the NSIS installer
 ```
 
----
-
-## Inicio rápido — Modo Servidor Web
-
-Si preferís correr solo el backend y abrir el dashboard en tu navegador (`http://localhost:5173` en desarrollo o `http://localhost:3001` con build estático):
+Electron (tray icon and auto-update through GitHub Releases):
 
 ```powershell
-# En una terminal — Backend
+npm start                  # opens the app
+npm run dist               # builds the installer in dist/ without publishing
+npm run release            # builds and publishes a GitHub Release (needs GITHUB_TOKEN with repo scope)
+```
+
+## Quick start: web server mode
+
+To run only the backend and open the dashboard in your browser (`http://localhost:5173` in development, or `http://localhost:3001` with the static build):
+
+```powershell
+# Terminal 1: backend
 cd server
 npm start
 
-# En otra terminal — Frontend (modo desarrollo)
+# Terminal 2: frontend in development mode
 cd frontend
 npm run dev
 ```
 
----
+## Security
 
-## Seguridad
-
-El proyecto implementa un modelo de seguridad por capas auditado contra las guías OWASP y STRIDE:
-
-1. **Localhost Binding Estricto**: El servidor Express se enlaza exclusivamente a `127.0.0.1`. Bloquea conexiones externas de LAN o Internet.
-2. **Sin Inyección de Comandos**: Ningún comando usa shells intermedias como `exec()` con concatenación. Todo el procesamiento de procesos se realiza con `spawn()` y arrays de argumentos tipados y delimitados.
-3. **Whitelist de Módulos**: Solo se permite la ejecución de los 23 módulos formalmente registrados en `MODULES`. Cualquier llamada fuera de lista es rechazada con HTTP 400.
-4. **Validación de Rutas Seguras con `realpath`**: Todo borrado en disco valida que el path sea una subcarpeta estricta y canónica de directorios permitidos (`%TEMP%`, `Caches`, etc.).
-5. **Modo `dryRun` en Acciones**: Todas las mutaciones del sistema admiten el flag `dryRun` para previsualizar exactamente qué cambios ocurrirían sin modificar el estado del sistema.
-6. **Reversibilidad Atómica (`changes.json`)**: Cada cambio aplicado guarda su valor previo para permitir deshacer modificaciones (`undo`) de forma individual.
-7. **Rate Limiting y Headers de Seguridad**: Protección contra abusos de endpoints con `express-rate-limit` y `helmet`.
+1. The Express server binds to `127.0.0.1` only, so other machines on the LAN or the internet cannot reach it.
+2. Commands run through `spawn()` with argument arrays and no shell. The one exception is global npm updates, which go through the shell because `npm` is a `.cmd` script on Windows.
+3. Only the 23 modules registered in `MODULES` can run. Any other module name gets an HTTP 400.
+4. Every file deletion resolves the path with `realpath` and checks that it sits inside an allowed folder (`%TEMP%`, caches and similar).
+5. Every system change accepts a `dryRun` flag that shows what would change without changing it.
+6. Every applied change stores its previous value in `changes.json`, so each one can be undone on its own.
+7. Endpoints use `express-rate-limit` and `helmet` security headers.
