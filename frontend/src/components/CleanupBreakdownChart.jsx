@@ -15,6 +15,10 @@ const CATEGORY_COLORS = {
   downloads: '#f97316',
 };
 
+const AXIS_LABEL_MAX = 26;
+// Una sola linea por etiqueta: recharts parte en varias lineas lo que excede `width` y se pisan con la barra vecina.
+const shortLabel = (name) => (name.length > AXIS_LABEL_MAX ? `${name.slice(0, AXIS_LABEL_MAX - 1).trimEnd()}…` : name);
+
 const fmtSize = (mb) => {
   if (mb == null || mb === 0) return '0 MB';
   return mb < 1024 ? `${Number(mb).toFixed(1)} MB` : `${(mb / 1024).toFixed(2)} GB`;
@@ -122,7 +126,8 @@ export default function CleanupBreakdownChart({
               <YAxis
                 type="category"
                 dataKey="name"
-                width={130}
+                width={190}
+                tickFormatter={shortLabel}
                 stroke="var(--color-ink-2)"
                 fontSize={12}
                 tickLine={false}
