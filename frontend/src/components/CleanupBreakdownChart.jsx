@@ -15,6 +15,20 @@ const CATEGORY_COLORS = {
   downloads: '#f97316',
 };
 
+const AXIS_LABEL_MAX = 26;
+const shortLabel = (name) => (name.length > AXIS_LABEL_MAX ? `${name.slice(0, AXIS_LABEL_MAX - 1).trimEnd()}…` : name);
+
+// Tick propio de una sola linea: el <Text> de recharts parte en varias lineas toda etiqueta que excede su ancho
+// y, con 32 px por barra, las lineas se pisaban con las de la barra vecina.
+function AxisLabel({ x, y, payload }) {
+  return (
+    <text x={x - 6} y={y} dy="0.32em" textAnchor="end" fill="var(--color-ink-2)" fontSize={12}>
+      <title>{payload.value}</title>
+      {shortLabel(payload.value)}
+    </text>
+  );
+}
+
 const fmtSize = (mb) => {
   if (mb == null || mb === 0) return '0 MB';
   return mb < 1024 ? `${Number(mb).toFixed(1)} MB` : `${(mb / 1024).toFixed(2)} GB`;
@@ -122,9 +136,9 @@ export default function CleanupBreakdownChart({
               <YAxis
                 type="category"
                 dataKey="name"
-                width={130}
-                stroke="var(--color-ink-2)"
-                fontSize={12}
+                width={190}
+                interval={0}
+                tick={<AxisLabel />}
                 tickLine={false}
               />
               <Tooltip
