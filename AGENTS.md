@@ -1,4 +1,4 @@
-# OptiHelx — L0 Agent Router
+# OptiHelx: L0 Agent Router
 
 Suite de optimización y mantenimiento de Windows (Node.js/Express + React/Vite + Tauri v2).
 
