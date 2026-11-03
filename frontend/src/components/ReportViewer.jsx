@@ -383,6 +383,12 @@ export default function ReportViewer() {
     return (
       <>
         {oemModeSelector}
+        {generic.loadError && (
+          <div className="inline-error" role="alert" style={{ marginBottom: 'var(--space-3)' }}>
+            <span>No se pudieron cargar los elementos: {generic.loadError}</span>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={generic.load}>Reintentar</button>
+          </div>
+        )}
         <ItemCheckboxList
           items={generic.items}
           selected={generic.selected}

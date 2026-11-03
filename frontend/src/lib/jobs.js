@@ -64,7 +64,13 @@ async function consumeStream(key, res) {
 
   const handle = (name, payload) => {
     if (name === 'progress') {
-      patch(key, { progress: JSON.parse(payload) });
+      // Un progress mal formado es telemetria perdida, no un fallo de la operacion:
+      // se ignora esa linea. El resultado lo decide `done`.
+      try {
+        patch(key, { progress: JSON.parse(payload) });
+      } catch (err) {
+        if (!(err instanceof SyntaxError)) throw err;
+      }
     } else if (name === 'output') {
       appendLog(key, { type: 'output', text: payload });
     } else if (name === 'error') {

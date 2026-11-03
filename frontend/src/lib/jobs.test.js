@@ -140,3 +140,17 @@ test('scanAll se cancela entero', async () => {
   assert.equal(calls.length, 1);
   assert.equal(getJob('scan:b').status, 'idle');
 });
+
+test('progress mal formado se ignora y no tumba el job', async () => {
+  fakeFetch((u, o) => sseResponse([sse('progress', '{no es json'), sse('output', 'sigue'), sse('done', { exitCode: 0, timedOut: false })], o.signal));
+  const job = await startScan('cleanup');
+  assert.equal(job.status, 'done');
+  assert.equal(job.error, null);
+  assert.ok(job.logs.some((l) => l.text === 'sigue'));
+});
+
+test('done mal formado sigue siendo error', async () => {
+  fakeFetch((u, o) => sseResponse([sse('done', '{roto')], o.signal));
+  const job = await startScan('cleanup');
+  assert.equal(job.status, 'error');
+});

@@ -69,13 +69,18 @@ export default function HealthScoreCard({ onOptimized }) {
     );
   }
 
-  if (error && !data) {
-    return null; // Silencioso si falla la primera vez
+  // Sin datos (primera carga fallida) o sin score no se inventa un valor:
+  // estado de error honesto con Reintentar.
+  if (!data || typeof data.score !== 'number') {
+    return (
+      <div className="inline-error" role="alert" style={{ marginBottom: 'var(--space-6)' }}>
+        <span>{error || 'El diagnóstico de salud no devolvió una puntuación.'}</span>
+        <button type="button" className="btn btn-sm btn-secondary" onClick={fetchHealthScore}>Reintentar</button>
+      </div>
+    );
   }
 
-  const score = data?.score ?? 100;
-  const grade = data?.grade ?? 'Excelente';
-  const badgeTone = data?.badgeTone ?? 'is-success';
+  const { score, grade, badgeTone } = data;
 
   // Color del score radial / gauge
   const getScoreColor = (s) => {
@@ -289,18 +294,8 @@ export default function HealthScoreCard({ onOptimized }) {
       )}
 
       {error && (
-        <div
-          style={{
-            marginTop: 'var(--space-3)',
-            padding: 'var(--space-2) var(--space-3)',
-            borderRadius: 'var(--radius-sm)',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid var(--color-danger)',
-            color: 'var(--color-danger)',
-            fontSize: 'var(--text-xs)',
-          }}
-        >
-          {error}
+        <div className="inline-error" role="alert" style={{ marginTop: 'var(--space-3)' }}>
+          <span>{error}</span>
         </div>
       )}
 

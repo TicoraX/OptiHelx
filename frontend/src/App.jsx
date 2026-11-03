@@ -12,11 +12,13 @@ import { MODULES, MODULE_KEYS } from './modules';
 import { ModuleIcon } from './components/ModuleIcon';
 import { API_BASE } from './config';
 import { setOnJobFinished } from './lib/jobs';
+import { mergeStatus } from './lib/status';
 
 export default function App() {
   const [systemStatus, setSystemStatus] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const [isOnline, setIsOnline] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   // tokens.css define los dos modos desde el principio, pero nada seteaba
@@ -42,9 +44,12 @@ export default function App() {
   }, []);
 
   const isMountedRef = useRef(true);
+  const hasDataRef = useRef(false);
 
-  const fetchStatus = useCallback(async ({ maxRetries = 0, retryDelay = 350, showSkeleton = false } = {}) => {
-    if (showSkeleton) {
+  // El skeleton y la vista de error global existen solo mientras no hay datos.
+  // Con datos previos, un refresco fallido los conserva y levanta `refreshFailed`.
+  const fetchStatus = useCallback(async ({ maxRetries = 0, retryDelay = 350 } = {}) => {
+    if (!hasDataRef.current) {
       setLoading(true);
       setError(null);
     }
@@ -56,8 +61,10 @@ export default function App() {
         if (!res.ok) throw new Error('Servidor remoto inalcanzable');
         const data = await res.json();
         if (!isMountedRef.current) return true;
-        setSystemStatus(data);
+        hasDataRef.current = true;
+        setSystemStatus((prev) => mergeStatus(prev, data));
         setError(null);
+        setRefreshFailed(false);
         setIsOnline(true);
         setLoading(false);
         return true;
@@ -68,7 +75,8 @@ export default function App() {
           continue;
         }
         if (!isMountedRef.current) return false;
-        setError(err.message || 'Error de conexión con el backend');
+        if (hasDataRef.current) setRefreshFailed(true);
+        else setError(err.message || 'Error de conexión con el backend');
         setIsOnline(false);
         setLoading(false);
         return false;
@@ -77,20 +85,22 @@ export default function App() {
     return false;
   }, []);
 
+  const onRefreshStatus = useCallback(() => fetchStatus({ maxRetries: 25, retryDelay: 350 }), [fetchStatus]);
+
   useEffect(() => {
     isMountedRef.current = true;
 
     // Conexión inicial con reintentos silenciosos automáticos mientras arranca el subproceso Node (hasta ~10s)
-    fetchStatus({ maxRetries: 30, retryDelay: 350, showSkeleton: true });
+    fetchStatus({ maxRetries: 30, retryDelay: 350 });
 
     // Polling periódico cada 30s sin activar skeleton
     const interval = setInterval(() => {
-      fetchStatus({ maxRetries: 1, retryDelay: 500, showSkeleton: false });
+      fetchStatus({ maxRetries: 1, retryDelay: 500 });
     }, 30000);
 
     // Gancho del store de jobs: refresca el estado al terminar cualquier operacion.
     setOnJobFinished(() => {
-      fetchStatus({ maxRetries: 2, retryDelay: 400, showSkeleton: false });
+      fetchStatus({ maxRetries: 2, retryDelay: 400 });
     });
 
     return () => {
@@ -213,7 +223,8 @@ export default function App() {
                     systemStatus={systemStatus} 
                     loading={loading} 
                     error={error} 
-                    onRefreshStatus={() => fetchStatus({ maxRetries: 25, retryDelay: 350, showSkeleton: true })} 
+                    refreshFailed={refreshFailed}
+                    onRefreshStatus={onRefreshStatus} 
                   /> 
                 } 
               />

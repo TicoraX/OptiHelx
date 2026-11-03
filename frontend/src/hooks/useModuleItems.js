@@ -29,11 +29,12 @@ const MODULE_CONFIG = {
 
 /**
  * @param {string} module — clave del módulo activo
- * @returns {{ items, selected, toggle, selectAll, deselectAll, hasSelected, clear, load, buildChecked, config }}
+ * @returns {{ items, selected, toggle, selectAll, deselectAll, hasSelected, clear, load, loadError, buildChecked, config }}
  */
 export function useModuleItems(module) {
   const [items, setItems] = useState([]);
   const [selected, setSelected] = useState({});
+  const [loadError, setLoadError] = useState(null);
 
   const config = MODULE_CONFIG[module];
 
@@ -47,7 +48,9 @@ export function useModuleItems(module) {
 
     try {
       const res = await fetch(`${API_BASE}/reports/${module}/items`);
-      if (!res.ok) { clear(); return; }
+      // 404 = el modulo aun no se escaneo: es el estado vacio legitimo.
+      if (res.status === 404) { clear(); setLoadError(null); return; }
+      if (!res.ok) throw new Error(`El servidor respondió ${res.status}`);
       const { items: raw } = await res.json();
 
       const list = Array.isArray(raw) ? raw : [];
@@ -55,8 +58,10 @@ export function useModuleItems(module) {
       setSelected(
         Object.fromEntries(list.map((it, i) => [i, config.defaultCheck(it)]))
       );
-    } catch {
-      clear();
+      setLoadError(null);
+    } catch (err) {
+      // Conserva la lista previa: un fallo de carga no equivale a "sin elementos".
+      setLoadError(err.message || 'No se pudieron cargar los elementos');
     }
   }, [module, config, clear]);
 
@@ -92,7 +97,7 @@ export function useModuleItems(module) {
       .filter(Boolean);
   }, [selected, items, config]);
 
-  return { items, selected, toggle, selectAll, deselectAll, hasSelected, clear, load, buildChecked, config };
+  return { items, selected, toggle, selectAll, deselectAll, hasSelected, clear, load, loadError, buildChecked, config };
 }
 
 /** Módulos que usan el hook genérico (no los especiales). */

@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useCallback, memo, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MODULES, MODULE_KEYS } from '../modules';
 import { ModuleIcon } from './ModuleIcon';
@@ -57,7 +57,8 @@ function usePersistedModuleLayout() {
   return { order, hidden, moveModule, toggleHidden };
 }
 
-function ModuleCard({ moduleKey, data, onOpen, style, revealIndex }) {
+// memo + useJob propio: el progreso de un escaneo re-renderiza solo su tarjeta.
+const ModuleCard = memo(function ModuleCard({ moduleKey, data, onOpen, style, revealIndex }) {
   const job = useJob(`scan:${moduleKey}`);
   const scanning = job.status === 'running';
   const mod = MODULES[moduleKey];
@@ -95,9 +96,7 @@ function ModuleCard({ moduleKey, data, onOpen, style, revealIndex }) {
       </div>
 
       {job.status === 'error' && (
-        <p role="alert" style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>
-          {job.error}
-        </p>
+        <p className="inline-error" role="alert">{job.error}</p>
       )}
 
       <footer className="card-footer">
@@ -114,10 +113,11 @@ function ModuleCard({ moduleKey, data, onOpen, style, revealIndex }) {
       </footer>
     </article>
   );
-}
+});
 
-export default function Dashboard({ systemStatus, loading, error, onRefreshStatus }) {
+export default function Dashboard({ systemStatus, loading, error, refreshFailed, onRefreshStatus }) {
   const navigate = useNavigate();
+  const openModule = useCallback((k) => navigate(`/report/${k}`), [navigate]);
   const [customizing, setCustomizing] = useState(false);
   const { order, hidden, moveModule, toggleHidden } = usePersistedModuleLayout();
 
@@ -318,9 +318,16 @@ export default function Dashboard({ systemStatus, loading, error, onRefreshStatu
       )}
 
       {all.status === 'error' && (
-        <div className="glass-panel" role="alert" style={{ padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>{all.error}</span>
+        <div className="inline-error" role="alert" style={{ marginBottom: 'var(--space-5)' }}>
+          <span>{all.error}</span>
           <button type="button" className="btn btn-sm btn-secondary" onClick={() => clearError(SCAN_ALL)}>Cerrar</button>
+        </div>
+      )}
+
+      {refreshFailed && (
+        <div className="inline-error" role="status" style={{ marginBottom: 'var(--space-5)' }}>
+          <span>No se pudo actualizar el estado. Se muestran los últimos datos.</span>
+          <button type="button" className="btn btn-sm btn-secondary" onClick={onRefreshStatus}>Reintentar</button>
         </div>
       )}
 
@@ -336,7 +343,7 @@ export default function Dashboard({ systemStatus, loading, error, onRefreshStatu
             key={key}
             moduleKey={key}
             data={systemStatus?.[key]}
-            onOpen={(k) => navigate(`/report/${k}`)}
+            onOpen={openModule}
             revealIndex={i}
           />
         ))}
