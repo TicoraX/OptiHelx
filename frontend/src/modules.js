@@ -1,5 +1,5 @@
 /**
- * Registro declarativo de los módulos del Optimizador.
+ * Registro declarativo de los módulos de OptiHelx.
  *
  * `span` controla el area en el Bento: los modulos no importan todos igual.
  */
@@ -15,18 +15,11 @@ export const ICONS = {
   power: 'M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10',
   apps: 'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
   privacy: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
-  adblock: 'M4.9 4.9l14.2 14.2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z',
   gaming: 'M6 11h4M8 9v4M15 11h.01M18 11h.01M2 12a5 5 0 0 0 5 5h1a2 2 0 0 1 2 2 3 3 0 0 0 6 0 2 2 0 0 1 2-2h1a5 5 0 0 0 5-5V9a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v3z',
   integrity: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
   contextmenu: 'M4 6h16M4 12h16M4 18h10',
   oemdebloat: 'M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55A1 1 0 0 1 20.38 20H3.62a1 1 0 0 1-.9-1.45L4 16',
-  timers: 'M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
-  ghostdevices: 'M12 2v20M8 5h8M7 9h10M9 22h6',
   searchindex: 'M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z',
-  dnsflush: 'M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9',
-  networkprivacy: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM12 8v4m0 4h.01',
-  pagefile: 'M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6zm4 3h8M8 12h8M8 15h4',
-  werfault: 'M12 9v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z',
   smartdisk: 'M22 12A10 10 0 0 0 12 2v10zM12 22a10 10 0 1 0 0-20v10l7.07 7.07A10 10 0 0 0 12 22z',
   shadercache: 'M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
   // Símbolos específicos para perfiles de optimización
@@ -149,29 +142,14 @@ export const MODULES = {
       { label: 'Instaladas', value: d.appsCount ?? 0 },
     ],
   },
-  adblock: {
-    label: 'Anuncios',
-    blurb: 'Bloqueo por dominio en el archivo hosts',
-    description: 'Aplica bloqueo de anuncios y telemetría por dominios en el archivo hosts de Windows con fuentes verificadas.',
-    icon: ICONS.adblock,
-    metrics: (d) => [
-      { label: 'Estado', value: d.activo ? 'Activo' : 'Inactivo',
-        tone: d.activo ? 'is-success' : null },
-      { label: 'Dominios bloqueados', value: d.blockedDomains ?? 0 },
-      { label: 'Lista descargada', value: d.listDomains ? `${d.listDomains} dominios` : '—' },
-      { label: 'Antigüedad de la lista',
-        value: d.listAgeDays == null ? '—' : `${d.listAgeDays} días`,
-        tone: tone(d.listAgeDays ?? 0, { warn: 30 }) },
-    ],
-  },
   privacy: {
-    label: 'Privacidad',
-    blurb: '8 ajustes de telemetría y permisos',
-    description: 'Revisa 8 ajustes de privacidad de Windows: telemetría, Cortana, ID publicitario, ubicación, cámara, micrófono y más. Los protege con un clic.',
+    label: 'Privacidad Integral',
+    blurb: '16 ajustes de telemetría, red, permisos y WER',
+    description: 'Revisa y protege 16 directivas de privacidad de Windows: telemetría, WiFi Sense, Spotlight, apps promocionadas, pre-carga de Edge, diálogos WER, cámara y micrófono.',
     icon: ICONS.privacy,
     metrics: (d) => [
-      { label: 'Protegidos', value: `${d.hardenedCount ?? 0} / ${d.totalSettings ?? 0}`,
-        tone: (d.hardenedCount ?? 0) < (d.totalSettings ?? 0) ? 'is-warning' : 'is-success' },
+      { label: 'Protegidos', value: `${d.hardenedCount ?? 0} / ${d.totalSettings ?? 16}`,
+        tone: (d.hardenedCount ?? 0) < (d.totalSettings ?? 16) ? 'is-warning' : 'is-success' },
     ],
   },
   gaming: {
@@ -223,76 +201,11 @@ export const MODULES = {
       { label: 'Servicios detectados', value: d.detectedCount ?? 0 },
     ],
   },
-  timers: {
-    label: 'Temporizadores & Latencia BCD',
-    blurb: 'HPET, Dynamic Ticking y TSC de CPU',
-    description: 'Ajusta parámetros de reloj de bajo nivel (Dynamic Ticking, HPET, TSC) en el almacén de arranque de Windows (BCD) para reducir el micro-stuttering.',
-    icon: ICONS.timers,
-    metrics: (d) => [
-      { label: 'Optimizados', value: `${d.optimizedCount ?? 0}/${d.total ?? 3}`,
-        tone: (d.optimizedCount ?? 0) === (d.total ?? 3) ? 'is-success' : 'is-warning' },
-      { label: 'Pendientes', value: d.pendingCount ?? 0 },
-    ],
-  },
-  ghostdevices: {
-    label: 'Dispositivos Fantasma PnP',
-    blurb: 'Registros de USB y periféricos desconectados',
-    description: 'Detecta registros de periféricos y dispositivos USB desconectados acumulados en Windows y permite eliminarlos de forma segura.',
-    icon: ICONS.ghostdevices,
-    metrics: (d) => [
-      { label: 'Seguros de limpiar', value: d.safeCount ?? 0,
-        tone: tone(d.safeCount ?? 0, { warn: 10, danger: 30 }) },
-      { label: 'Total desconectados', value: d.totalCount ?? 0 },
-    ],
-  },
   searchindex: {
     label: 'Indexador & Búsqueda Windows',
     blurb: 'Políticas de I/O y CPU de Windows Search',
     description: 'Audita y optimiza el consumo de disco y CPU de Windows Search, restringe la indexación de archivos cifrados y desactiva la búsqueda web en el menú inicio.',
     icon: ICONS.searchindex,
-    metrics: (d) => [
-      { label: 'Optimizados', value: `${d.optimizedCount ?? 0}/${d.total ?? 4}`,
-        tone: (d.optimizedCount ?? 0) === (d.total ?? 4) ? 'is-success' : 'is-warning' },
-      { label: 'Pendientes', value: d.pendingCount ?? 0 },
-    ],
-  },
-  dnsflush: {
-    label: 'Caché DNS & Red LAN',
-    blurb: 'Vaciado DNS, NetBIOS y registro WINS',
-    description: 'Purga la memoria caché del cliente DNS de Windows, actualiza los registros NetBIOS y re-sincroniza las conexiones de red locales.',
-    icon: ICONS.dnsflush,
-    metrics: (d) => [
-      { label: 'Dominios en caché', value: d.cachedCount ?? 0 },
-      { label: 'Acciones listas', value: d.totalActions ?? 4, tone: 'is-success' },
-    ],
-  },
-  networkprivacy: {
-    label: 'Privacidad en Red & Telemetría',
-    blurb: 'WiFi Sense, Spotlight y pre-carga Edge',
-    description: 'Bloquea la telemetría transmitida por red: descargas de Spotlight, WiFi Sense, apps promocionadas y pre-carga de Microsoft Edge.',
-    icon: ICONS.networkprivacy,
-    metrics: (d) => [
-      { label: 'Protegidos', value: `${d.protectedCount ?? 0}/${d.total ?? 4}`,
-        tone: (d.protectedCount ?? 0) === (d.total ?? 4) ? 'is-success' : 'is-warning' },
-      { label: 'Expuestos', value: d.exposedCount ?? 0 },
-    ],
-  },
-  pagefile: {
-    label: 'Memoria Virtual & Pagefile',
-    blurb: 'Kernel en RAM física y Paginación',
-    description: 'Optimiza el Administrador de Memoria de Windows: mantiene el núcleo y controladores en RAM física (DisablePagingExecutive), prioriza memoria para programas y acelera el apagado.',
-    icon: ICONS.pagefile,
-    metrics: (d) => [
-      { label: 'Optimizados', value: `${d.optimizedCount ?? 0}/${d.total ?? 3}`,
-        tone: (d.optimizedCount ?? 0) === (d.total ?? 3) ? 'is-success' : 'is-warning' },
-      { label: 'Pendientes', value: d.pendingCount ?? 0 },
-    ],
-  },
-  werfault: {
-    label: 'Reporte de Errores & WerFault',
-    blurb: 'Volcados y Telemetría de Fallos',
-    description: 'Administra directivas de Windows Error Reporting: suprime bloqueos por recolección de minidumps, desactiva la telemetría de fallos hacia servidores de Microsoft y cierra procesos silenciosamente.',
-    icon: ICONS.werfault,
     metrics: (d) => [
       { label: 'Optimizados', value: `${d.optimizedCount ?? 0}/${d.total ?? 4}`,
         tone: (d.optimizedCount ?? 0) === (d.total ?? 4) ? 'is-success' : 'is-warning' },

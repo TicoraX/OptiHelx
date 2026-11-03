@@ -1,17 +1,16 @@
 import express from 'express';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { randomUUID } from 'crypto';
 import { spawn } from 'child_process';
 import { readFileSync, existsSync, writeFileSync, statSync } from 'fs';
 import { join, dirname, resolve, basename } from 'path';
 import { fileURLToPath } from 'url';
 import {
-  PROJECT_ROOT, MODULES, TASK_TO_MODULE, VALID_MODULES, VALID_TASKS,
+  PROJECT_ROOT, MODULES, VALID_MODULES, VALID_TASKS,
   validateModule, validateDate, validateTask, validateTime, validateFrequency,
   validateWeekdays, validateIntervalDays, validateBooleanField, validateIndexList,
-  validateDays, validateMinRamMB, normalizeSchTaskStatus, loadJsonSafe,
-  findLatestReport, buildReportPath, safeHandler, loadItems, getScanTimeline,
+  validateDays, validateMinRamMB, normalizeSchTaskStatus,
+  findLatestReport, buildReportPath, safeHandler, loadItems, getScanTimeline, jobContext,
 } from './lib/shared.js';
 import { listAllChanges, undoChange } from './lib/changes.js';
 import { runCleanupScanNative, runCleanupActionNative } from './lib/cleanup.js';
@@ -23,18 +22,11 @@ import { runServicesScanNative, runServicesActionNative } from './lib/services.j
 import { runPowerScanNative, runPowerActionNative } from './lib/power.js';
 import { runAppsScanNative, runAppsActionNative } from './lib/apps.js';
 import { runPrivacyScanNative, runPrivacyActionNative } from './lib/privacy.js';
-import { runAdblockScanNative, runAdblockActionNative, FUENTES_VALIDAS } from './lib/adblock.js';
 import { runGamingScanNative, runGamingActionNative } from './lib/gaming.js';
 import { runIntegrityScanNative, runIntegrityActionNative } from './lib/integrity.js';
 import { runContextMenuScanNative, runContextMenuActionNative } from './lib/contextmenu.js';
 import { runOemDebloatScanNative, runOemDebloatActionNative } from './lib/oemdebloat.js';
-import { runTimersScanNative, runTimersActionNative } from './lib/timers.js';
-import { runGhostDevicesScanNative, runGhostDevicesActionNative } from './lib/ghostdevices.js';
 import { runSearchIndexScanNative, runSearchIndexActionNative } from './lib/searchindex.js';
-import { runDnsFlushScanNative, runDnsFlushActionNative } from './lib/dnsflush.js';
-import { runNetworkPrivacyScanNative, runNetworkPrivacyActionNative } from './lib/networkprivacy.js';
-import { runPagefileScanNative, runPagefileActionNative } from './lib/pagefile.js';
-import { runWerFaultScanNative, runWerFaultActionNative } from './lib/werfault.js';
 import { runSmartDiskScanNative, runSmartDiskActionNative } from './lib/smartdisk.js';
 import { runShaderCacheScanNative, runShaderCacheActionNative } from './lib/shadercache.js';
 import { getSystemTelemetry } from './lib/system.js';
@@ -240,18 +232,11 @@ const SCAN_HANDLERS = {
   power: runPowerScanNative,
   apps: runAppsScanNative,
   privacy: runPrivacyScanNative,
-  adblock: runAdblockScanNative,
   gaming: runGamingScanNative,
   integrity: runIntegrityScanNative,
   contextmenu: runContextMenuScanNative,
   oemdebloat: runOemDebloatScanNative,
-  timers: runTimersScanNative,
-  ghostdevices: runGhostDevicesScanNative,
   searchindex: runSearchIndexScanNative,
-  dnsflush: runDnsFlushScanNative,
-  networkprivacy: runNetworkPrivacyScanNative,
-  pagefile: runPagefileScanNative,
-  werfault: runWerFaultScanNative,
   smartdisk: runSmartDiskScanNative,
   shadercache: runShaderCacheScanNative,
 };
@@ -281,18 +266,11 @@ const ACTION_HANDLERS = {
   power: runPowerActionNative,
   apps: runAppsActionNative,
   privacy: runPrivacyActionNative,
-  adblock: runAdblockActionNative,
   gaming: runGamingActionNative,
   integrity: runIntegrityActionNative,
   contextmenu: runContextMenuActionNative,
   oemdebloat: runOemDebloatActionNative,
-  timers: runTimersActionNative,
-  ghostdevices: runGhostDevicesActionNative,
   searchindex: runSearchIndexActionNative,
-  dnsflush: runDnsFlushActionNative,
-  networkprivacy: runNetworkPrivacyActionNative,
-  pagefile: runPagefileActionNative,
-  werfault: runWerFaultActionNative,
   smartdisk: runSmartDiskActionNative,
   shadercache: runShaderCacheActionNative,
 };
@@ -371,12 +349,9 @@ app.post('/api/quick-optimize', rateLimit({
         const env = { DRY_RUN: dryRun ? 'true' : 'false' };
         if (fix.module === 'cleanup') env.CLEAN_CATEGORIES = 'temp,recycle,cache';
         else if (fix.module === 'ram') { env.GLOBAL_OPTIMIZE = 'true'; env.CLEAN_MODE = 'soft'; }
-        else if (fix.module === 'privacy') env.OPTIMIZE_PRIVACY = '1,2,3,4,5,6,7,8';
+        else if (fix.module === 'privacy') env.OPTIMIZE_PRIVACY = '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16';
         else if (fix.module === 'gaming') env.SETTINGS = 'hags,gamemode,gamedvr,fse,networkThrottle,systemResponsiveness';
-        else if (fix.module === 'dnsflush') env.FLUSH_DNS = 'true';
-        else if (fix.module === 'networkprivacy') env.SETTINGS = 'telemetry_diag,ceip_optin,advertising_id,smartscreen_p2p';
-        else if (fix.module === 'pagefile') env.SETTINGS = 'disablepagingexecutive,largesystemcache,clearpagefile';
-        else if (fix.module === 'werfault') env.SETTINGS = 'disableerrorreporting,disablecrashdumps,disablecer,disablesqmlogger';
+        else if (fix.module === 'network') env.DRY_RUN = dryRun ? 'true' : 'false';
 
         await handler(env, (msg) => logs.push(msg));
 
@@ -501,32 +476,57 @@ function startNativeSSE(res) {
  * (ej. `schtasks /query` en un sistema con miles de tareas) deje la
  * conexion SSE abierta para siempre.
  */
-function runNativeOverSSE(res, task, timeoutMs = 120000) {
+// Timeouts por tipo. El frontend espera 330 s en escaneo y 660 s en accion:
+// el servidor corta antes para que el cliente reciba el `done` y no su propio timeout.
+const SCAN_TIMEOUT_MS = 300000;
+const ACTION_TIMEOUT_MS = 600000;
+
+// Single-flight: un trabajo por clave `scan:<modulo>` / `action:<modulo>`.
+const runningJobs = new Set();
+
+function runNativeOverSSE(res, task, timeoutMs = SCAN_TIMEOUT_MS, lockKey = null) {
+  if (lockKey && runningJobs.has(lockKey)) {
+    return res.status(409).json({ error: `Ya hay una operacion en curso (${lockKey}). Espera a que termine.` });
+  }
+  if (lockKey) runningJobs.add(lockKey);
+
   const send = startNativeSSE(res);
+  const controller = new AbortController();
   let settled = false;
+
+  // Un solo punto de cierre: libera el lock y aborta los hijos vivos.
+  const finish = () => {
+    settled = true;
+    clearTimeout(timer);
+    if (lockKey) runningJobs.delete(lockKey);
+    controller.abort();
+  };
 
   const timer = setTimeout(() => {
     if (settled) return;
-    settled = true;
+    finish();
     send('error', 'Tiempo de espera agotado.');
     send('done', { exitCode: 1, timedOut: true });
     res.end();
   }, timeoutMs);
 
+  // El cliente cerro la conexion antes del `done`: nadie espera el resultado.
+  res.on('close', () => {
+    if (!settled) finish();
+  });
+
   // Segundo canal: los modulos con pasos contables reportan avance por aca.
   // El frontend ya dibujaba la barra; hasta ahora nadie emitia el evento.
-  task((line) => send('output', line), (p) => send('progress', p))
+  jobContext.run({ signal: controller.signal }, () => task((line) => send('output', line), (p) => send('progress', p)))
     .then(() => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
+      finish();
       send('done', { exitCode: 0, timedOut: false });
       res.end();
     })
     .catch((err) => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
+      finish();
       send('error', err.message);
       send('done', { exitCode: 1, timedOut: false });
       res.end();
@@ -534,7 +534,7 @@ function runNativeOverSSE(res, task, timeoutMs = 120000) {
 }
 
 app.post('/api/scan/:module', safeHandler((req, res) => {
-  const mod = validateModule(req.params.module);
+  validateModule(req.params.module);
   const handler = SCAN_HANDLERS[req.params.module];
   if (!handler) return res.status(400).json({ error: 'Modulo sin handler de escaneo' });
 
@@ -563,8 +563,7 @@ app.post('/api/scan/:module', safeHandler((req, res) => {
 
   // El diagnostico de red encadena ping sostenido, traceroute, MTU y DNS: pasa
   // holgadamente del minuto y medio por defecto.
-  const timeout = req.params.module === 'network' ? 300000 : undefined;
-  runNativeOverSSE(res, (onOutput, onProgress) => handler(...extraArgs, onOutput, onProgress), timeout);
+  runNativeOverSSE(res, (onOutput, onProgress) => handler(...extraArgs, onOutput, onProgress), SCAN_TIMEOUT_MS, `scan:${req.params.module}`);
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -610,30 +609,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     return [...new Set(picked)].join('|');
   };
 
-  // Adblock: la accion es un enum cerrado y las fuentes se validan contra la
-  // whitelist del modulo. Nada de esto se concatena en una URL ni en un
-  // comando; solo indexa objetos.
-  if (req.body?.adblockAction !== undefined) {
-    const a = String(req.body.adblockAction);
-    if (a !== 'apply' && a !== 'remove') {
-      const err = new Error('adblockAction: debe ser apply o remove');
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.ADBLOCK_ACTION = a;
-  }
 
-  if (req.body?.sources !== undefined) {
-    const picked = (Array.isArray(req.body.sources) ? req.body.sources : [])
-      .map((s) => String(s).trim());
-    const bad = picked.filter((s) => !FUENTES_VALIDAS.includes(s));
-    if (bad.length > 0) {
-      const err = new Error(`sources: fuente no permitida (${bad.join(', ')})`);
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.ADBLOCK_SOURCES = [...new Set(picked)].join(',');
-  }
 
   if (req.body?.programs !== undefined) {
     envVars.OPTIMIZE_PROGRAMS = validateIdList(req.body.programs, 'programs');
@@ -672,7 +648,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.SERVICES = joined;
   }
 
-  // Settings: IDs de directivas o ajustes (gaming, timers, searchindex, networkprivacy, pagefile, werfault)
+  // Settings: IDs de directivas o ajustes (gaming, privacy, searchindex)
   if (req.body?.settings !== undefined) {
     const raw = Array.isArray(req.body.settings)
       ? req.body.settings
@@ -687,7 +663,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.SETTINGS = [...new Set(picked)].join(',');
   }
 
-  // Actions: IDs de acciones para integrity y dnsflush
+  // Actions: IDs de acciones para integrity y smartdisk
   if (req.body?.actions !== undefined) {
     const raw = Array.isArray(req.body.actions)
       ? req.body.actions
@@ -726,20 +702,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     envVars.CACHES = [...new Set(picked)].join(',');
   }
 
-  // Devices: IDs de instancias de dispositivos para ghostdevices
-  if (req.body?.devices !== undefined) {
-    const raw = Array.isArray(req.body.devices)
-      ? req.body.devices
-      : String(req.body.devices || '').split(',');
-    const picked = raw.map((s) => String(s).trim()).filter(Boolean);
-    const bad = picked.filter((s) => s.length > 512 || /[\r\n]/.test(s));
-    if (bad.length > 0) {
-      const err = new Error('Identificadores de dispositivo invalidos');
-      err.statusCode = 400;
-      throw err;
-    }
-    envVars.DEVICES = [...new Set(picked)].join(',');
-  }
+
 
   // Disks: letras de unidad para smartdisk (ej. "C", "D:")
   if (req.body?.disks !== undefined) {
@@ -899,10 +862,9 @@ app.post('/api/action/:module', safeHandler((req, res) => {
   // nativos en Node para evitar el cuelgue al spawnear desde este proceso
   // servidor (ver "Bug critico conocido" en PROJECT_CONTEXT.md).
   // Las acciones instalan/cambian cosas reales (winget/pip/npm/choco, registro,
-  // tareas) y pueden tardar mucho mas que un escaneo de solo lectura — ej.
-  // "winget upgrade --all" tardo 3m28s en una prueba real. Timeout mas alto
-  // que el default de runNativeOverSSE (2 min, pensado para escaneos).
-  const ACTION_TIMEOUT_MS = 600000;
+  // tareas) y pueden tardar mucho mas que un escaneo de solo lectura, por
+  // ejemplo "winget upgrade --all" tardo 3m28s en una prueba real: por eso
+  // usan ACTION_TIMEOUT_MS (10 min) y no SCAN_TIMEOUT_MS (5 min).
 
   // Estos modulos solo actuan sobre lo que el usuario selecciono. Una peticion
   // sin seleccion no es un no-op inofensivo: es la firma de una llamada que no
@@ -913,21 +875,13 @@ app.post('/api/action/:module', safeHandler((req, res) => {
     ram: ['OPTIMIZE_PROCESSES', 'UNKNOWN_PROCESSES', 'RISKY_PROCESSES', 'GLOBAL_OPTIMIZE'],
     services: ['OPTIMIZE_SERVICES', 'SERVICES'],
     apps: ['OPTIMIZE_APPS', 'APPS'],
-    privacy: ['OPTIMIZE_PRIVACY', 'PRIVACY'],
+    privacy: ['OPTIMIZE_PRIVACY', 'PRIVACY', 'SETTINGS', 'ITEMS'],
     power: ['PLAN_GUID'],
-    // `remove` no lleva fuentes: quitar el bloqueo no necesita seleccion.
-    adblock: ['ADBLOCK_SOURCES', 'ADBLOCK_ACTION'],
     gaming: ['SETTINGS'],
     integrity: ['ACTIONS'],
     contextmenu: ['HANDLERS'],
     oemdebloat: ['SERVICES', 'OPTIMIZE_SERVICES'],
-    timers: ['SETTINGS'],
-    ghostdevices: ['DEVICES'],
     searchindex: ['SETTINGS'],
-    dnsflush: ['ACTIONS'],
-    networkprivacy: ['SETTINGS'],
-    pagefile: ['SETTINGS'],
-    werfault: ['SETTINGS'],
     smartdisk: ['ACTIONS', 'DISKS'],
     shadercache: ['CACHES'],
     updates: ['PACKAGES', 'ITEMS'],
@@ -953,7 +907,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
         // Omisión silenciosa para no interrumpir el flujo si el escaneo complementario falla
       }
     }
-  }, ACTION_TIMEOUT_MS);
+  }, ACTION_TIMEOUT_MS, `action:${req.params.module}`);
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -1254,6 +1208,7 @@ app.use((err, _req, res, _next) => {
 // ═══════════════════════════════════════════════════════
 const HOST = '127.0.0.1'; // Previene exposicion a LAN / internet
 
+export { app, SCAN_HANDLERS };
 export let serverInstance = null;
 
 export function stopServer() {
@@ -1265,7 +1220,7 @@ export function stopServer() {
 
 if (process.env.CLI_MODE !== 'true') {
   serverInstance = app.listen(PORT, HOST, () => {
-    console.log(`D1 Automation Server en http://${HOST}:${PORT}`);
+    console.log(`OptiHelx Automation Server en http://${HOST}:${PORT}`);
     console.log(`Root: ${PROJECT_ROOT}`);
     console.log(`Modulos: ${VALID_MODULES.join(', ')}`);
     console.log('Aceptando conexiones solo de localhost');
@@ -1273,7 +1228,7 @@ if (process.env.CLI_MODE !== 'true') {
 
   serverInstance.on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.error(`El puerto ${PORT} ya esta en uso: probablemente Optimizador ya esta abierto.`);
+      console.error(`El puerto ${PORT} ya esta en uso: probablemente OptiHelx ya esta abierto.`);
     } else {
       console.error(`Error del servidor: ${err.message}`);
     }

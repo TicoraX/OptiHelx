@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Ejecutor desatendido de perfiles del Optimizador para Windows Task Scheduler.
+    Ejecutor desatendido de perfiles de OptiHelx para Windows Task Scheduler.
 
 .DESCRIPTION
     Corre de forma autonoma en segundo plano sin requerir que la ventana de Electron
@@ -75,7 +75,7 @@ function Show-WindowsToast([string]$title, [string]$line1, [string]$line2 = '') 
         $xml = [Windows.Data.Xml.Dom.XmlDocument]::new()
         $xml.LoadXml($template)
         $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("Optimizador D1")
+        $notifier = [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("OptiHelx")
         $notifier.Show($toast)
     } catch {
         # Fallback silencioso: no interrumpir la ejecucion si las APIs WinRT no estan disponibles
@@ -137,11 +137,11 @@ $duration = [int]$sw.ElapsedMilliseconds
 if ($proc.ExitCode -eq 0) {
     $summaryText = "Mantenimiento completado con exito."
     Write-History -prof $Profile -success $true -summary $summaryText -freedMB 0 -durationMs $duration
-    Show-WindowsToast "Optimizador D1 - Tarea Programada" "Perfil '$Profile' ejecutado correctamente" "Duracion: $([Math]::Round($duration/1000, 1))s"
+    Show-WindowsToast "OptiHelx - Tarea Programada" "Perfil '$Profile' ejecutado correctamente" "Duracion: $([Math]::Round($duration/1000, 1))s"
     exit 0
 } else {
     $errMsg = if ($stderr) { $stderr.Trim() } else { "Codigo de salida $($proc.ExitCode)" }
     Write-History -prof $Profile -success $false -summary "Fallo al ejecutar el perfil" -freedMB 0 -durationMs $duration -errMsg $errMsg
-    Show-WindowsToast "Optimizador D1 - Advertencia" "Fallo la ejecucion del perfil '$Profile'" $errMsg
+    Show-WindowsToast "OptiHelx - Advertencia" "Fallo la ejecucion del perfil '$Profile'" $errMsg
     exit $proc.ExitCode
 }

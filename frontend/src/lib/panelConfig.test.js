@@ -6,8 +6,8 @@ import { GENERIC_MODULES } from '../hooks/useModuleItems.js';
 describe('Validación de panelConfig y módulos genéricos (Frontend)', () => {
   const expectedModules = [
     'services', 'apps', 'privacy', 'gaming', 'integrity',
-    'contextmenu', 'oemdebloat', 'timers', 'ghostdevices',
-    'searchindex', 'dnsflush', 'networkprivacy', 'pagefile', 'werfault'
+    'contextmenu', 'oemdebloat', 'searchindex', 'smartdisk',
+    'shadercache', 'updates'
   ];
 
   it('todos los módulos esperados existen en GENERIC_MODULES y GENERIC_PANEL_CONFIG', () => {
@@ -24,13 +24,10 @@ describe('Validación de panelConfig y módulos genéricos (Frontend)', () => {
     assert.equal(GENERIC_PANEL_CONFIG.integrity.bodyKey, 'actions');
     assert.equal(GENERIC_PANEL_CONFIG.contextmenu.bodyKey, 'handlers');
     assert.equal(GENERIC_PANEL_CONFIG.oemdebloat.bodyKey, 'services');
-    assert.equal(GENERIC_PANEL_CONFIG.timers.bodyKey, 'settings');
-    assert.equal(GENERIC_PANEL_CONFIG.ghostdevices.bodyKey, 'devices');
     assert.equal(GENERIC_PANEL_CONFIG.searchindex.bodyKey, 'settings');
-    assert.equal(GENERIC_PANEL_CONFIG.dnsflush.bodyKey, 'actions');
-    assert.equal(GENERIC_PANEL_CONFIG.networkprivacy.bodyKey, 'settings');
-    assert.equal(GENERIC_PANEL_CONFIG.pagefile.bodyKey, 'settings');
-    assert.equal(GENERIC_PANEL_CONFIG.werfault.bodyKey, 'settings');
+    assert.equal(GENERIC_PANEL_CONFIG.smartdisk.bodyKey, 'actions');
+    assert.equal(GENERIC_PANEL_CONFIG.shadercache.bodyKey, 'caches');
+    assert.equal(GENERIC_PANEL_CONFIG.updates.bodyKey, 'packages');
   });
 
   it('renderItem formatea adecuadamente los items', () => {

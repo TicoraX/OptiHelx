@@ -1,6 +1,6 @@
-# Optimizador D1 — AI & LLM Context File (llms.txt)
+# OptiHelx — AI & LLM Context File (llms.txt)
 
-> Suite integral de optimización, mantenimiento y monitoreo para Windows construida con Electron, Express y React/Vite.
+> Suite integral de optimización, mantenimiento y monitoreo para Windows construida con Tauri v2, Express y React/Vite.
 
 ## Arquitectura y Entorno
 - **Frontend**: React 19, Vite, Recharts, Marked. Servido en SPA sobre `http://127.0.0.1:3001`.

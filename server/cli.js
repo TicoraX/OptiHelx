@@ -4,15 +4,14 @@ import { getProfiles, applyProfile } from './lib/profiles.js';
 import { calculateHealthScore } from './lib/healthscore.js';
 import { getSystemTelemetry } from './lib/system.js';
 import { MODULES, VALID_MODULES } from './lib/shared.js';
-import { runGamingActionNative } from './lib/gaming.js';
 import { runCleanupActionNative } from './lib/cleanup.js';
 import { runRamActionNative } from './lib/ram.js';
 import { runSmartDiskActionNative } from './lib/smartdisk.js';
 import { runShaderCacheActionNative } from './lib/shadercache.js';
-import { runDnsFlushActionNative } from './lib/dnsflush.js';
+import { runNetworkActionNative } from './lib/network.js';
 
 // ═══════════════════════════════════════════════════════
-// Optimizador D1 — CLI Headless (server/cli.js)
+// OptiHelx — CLI Headless (server/cli.js)
 // ═══════════════════════════════════════════════════════
 
 const args = process.argv.slice(2);
@@ -27,7 +26,7 @@ const logProgress = isJson
 
 function printHelp() {
   console.log(`
-Uso: optimizador <comando> [opciones]
+Uso: optihelx <comando> [opciones]
 
 Comandos disponibles:
   status                Muestra el estado consolidado de todos los módulos
@@ -58,7 +57,7 @@ async function main() {
     if (isJson) {
       console.log(JSON.stringify(status, null, 2));
     } else {
-      console.log('=== ESTADO CONSOLIDADO DEL SISTEMA (Optimizador D1) ===');
+      console.log('=== ESTADO CONSOLIDADO DEL SISTEMA (OptiHelx) ===');
       console.log(`Módulos registrados: ${VALID_MODULES.length}`);
       for (const [key, data] of Object.entries(status)) {
         console.log(`  - [${key.padEnd(16)}] Último escaneo: ${data.lastScan || 'Pendiente'}`);
@@ -175,10 +174,10 @@ async function main() {
     return;
   }
 
-  if (command === 'dns') {
+  if (command === 'dns' || command === 'network') {
     logProgress(`Purgando y refrescando caché DNS (dryRun: ${isDryRun})...`);
-    const res = await runDnsFlushActionNative(
-      { DRY_RUN: isDryRun ? 'true' : 'false', ACTIONS: 'flushdns,registers' },
+    const res = await runNetworkActionNative(
+      { DRY_RUN: isDryRun ? 'true' : 'false' },
       (line) => logProgress(`  ${line}`),
     );
     if (isJson) {
@@ -189,7 +188,7 @@ async function main() {
     return;
   }
 
-  console.error(`Comando desconocido: '${command}'. Usa 'optimizador --help' para ver la lista de comandos.`);
+  console.error(`Comando desconocido: '${command}'. Usa 'optihelx --help' para ver la lista de comandos.`);
   process.exit(1);
 }
 

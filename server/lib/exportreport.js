@@ -120,7 +120,7 @@ export async function generateSystemExport(status, format = 'markdown') {
     }
   }
 
-  lines.push('', '---', '', '*Informe generado automáticamente por Optimizador D1.*');
+  lines.push('', '---', '', '*Informe generado automáticamente por OptiHelx.*');
 
   return lines.join('\n');
 }

@@ -1,5 +1,5 @@
 {
-  "name": "optimizador",
+  "name": "optihelx",
   "version": "1.5.0",
   "private": true,
   "type": "module",
@@ -16,8 +16,8 @@
     "release": "npm run build:frontend && electron-builder --publish always"
   },
   "build": {
-    "appId": "com.ticorax.optimizador",
-    "productName": "Optimizador",
+    "appId": "com.ticorax.optihelx",
+    "productName": "OptiHelx",
     "files": [
       "electron/**",
       "server/lib/**",
@@ -28,7 +28,6 @@
     ],
     "extraResources": [
       "scripts/Notify.ps1",
-      "scripts/Apply-Hosts.ps1",
       "scripts/Run-Scheduled.ps1"
     ],
     "win": {

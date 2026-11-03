@@ -7,6 +7,7 @@ import { GENERIC_PANEL_CONFIG } from './panelConfig';
 import { API_BASE } from '../config';
 import { renderReport } from '../lib/markdown';
 import { MODULES } from '../modules';
+import { useJob, startRun, cancel } from '../lib/jobs';
 import { useModuleItems, GENERIC_MODULES } from '../hooks/useModuleItems';
 
 const CleanupBreakdownChart = lazy(() => import('./CleanupBreakdownChart'));
@@ -35,6 +36,7 @@ export default function ReportViewer() {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const copyResetTimerRef = useRef(null);
+  const seenFinishRef = useRef(null);
 
   const handleCopyReport = async () => {
     if (!report?.content) return;
@@ -83,9 +85,7 @@ export default function ReportViewer() {
   // Power (botones, no checkboxes)
   const [powerPlans, setPowerPlans] = useState([]);
 
-  // Adblock
-  const [adblockSources, setAdblockSources] = useState([]);
-  const [selectedSources, setSelectedSources] = useState({});
+
 
   // Network
   const [bufferbloat, setBufferbloat] = useState(false);
@@ -94,10 +94,14 @@ export default function ReportViewer() {
   const [oemMode, setOemMode] = useState('demand');
 
   // Terminal & SSE States
-  const [logs, setLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [progress, setProgress] = useState(null);
-  const sseControllerRef = useRef(null);
+  // El estado vive en el store (lib/jobs.js): navegar no aborta la operacion.
+  const scanJob = useJob(`scan:${module}`);
+  const runJobState = useJob(`run:${module}`);
+  const [notice, setNotice] = useState(null);
+  const isRunning = scanJob.status === 'running' || runJobState.status === 'running';
+  const active = (runJobState.startedAt ?? 0) > (scanJob.startedAt ?? 0) ? runJobState : scanJob;
+  const logs = active.logs.length ? active.logs : (notice ? [notice] : []);
+  const progress = active.progress;
 
   const noneChecked = (list) => Object.fromEntries(list.map((_, i) => [i, false]));
 
@@ -117,8 +121,6 @@ export default function ReportViewer() {
       setRiskyProcesses([]); setSelectedRiskyProcesses({});
     } else if (module === 'power') {
       setPowerPlans([]);
-    } else if (module === 'adblock') {
-      setAdblockSources([]); setSelectedSources({});
     }
   }, [module]);
 
@@ -153,9 +155,6 @@ export default function ReportViewer() {
       setSelectedRiskyProcesses(noneChecked(items.risky || []));
     } else if (module === 'power') {
       setPowerPlans(Array.isArray(items) ? items : []);
-    } else if (module === 'adblock') {
-      setAdblockSources(items.fuentes || []);
-      setSelectedSources(Object.fromEntries((items.fuentes || []).map((_, i) => [i, true])));
     } else {
       clearSpecialItems();
     }
@@ -184,16 +183,20 @@ export default function ReportViewer() {
 
   useEffect(() => {
     fetchReport();
-    setLogs([]);
-    setIsRunning(false);
-    
+    setNotice(null);
+
     return () => {
-      if (sseControllerRef.current) {
-        sseControllerRef.current.abort();
-      }
       if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
     };
   }, [fetchReport]);
+
+  // Al terminar un job de este modulo (aunque haya sido lanzado antes de entrar), recargar el reporte.
+  useEffect(() => {
+    const prev = seenFinishRef.current;
+    seenFinishRef.current = { module, at: active.finishedAt };
+    // Al entrar o cambiar de modulo ya carga el efecto de fetchReport.
+    if (prev && prev.module === module && prev.at !== active.finishedAt) fetchReport();
+  }, [module, active.finishedAt, fetchReport]);
 
   const handleCheckboxChange = (type, index) => {
     if (type === 'program') {
@@ -229,9 +232,6 @@ export default function ReportViewer() {
              Object.values(selectedUnknownProcesses).some(Boolean) ||
              (riskyAck && Object.values(selectedRiskyProcesses).some(Boolean));
     }
-    if (module === 'adblock') {
-      return Object.values(selectedSources).some(Boolean);
-    }
     if (module === 'power') {
       return powerPlans.length > 0;
     }
@@ -251,7 +251,6 @@ export default function ReportViewer() {
     selectedUnknownProcesses,
     selectedRiskyProcesses,
     riskyAck,
-    selectedSources,
     powerPlans.length,
   ]);
 
@@ -268,12 +267,12 @@ export default function ReportViewer() {
   };
 
   // ── Action ──
-  const runAction = ({ dryRun = false, adblockAction } = {}) => {
+  const runAction = ({ dryRun = false } = {}) => {
     if (!hasSelected && module !== 'power' && module !== 'network') {
-      setLogs([{
+      setNotice({
         type: 'error',
         text: '[AVISO] No hay ningún elemento seleccionado. Marcá las casillas de los elementos a optimizar antes de ejecutar.',
-      }]);
+      });
       return;
     }
 
@@ -297,12 +296,6 @@ export default function ReportViewer() {
     }
 
     // Módulos especiales
-    if (module === 'adblock') {
-      body.adblockAction = adblockAction || 'apply';
-      body.sources = adblockSources
-        .filter((_, i) => selectedSources[i])
-        .map((f) => f.id);
-    }
     if (module === 'cleanup') {
       body.downloadsAgeDays = downloadsAgeDays;
       body.cleanCategories = availableCategories
@@ -340,126 +333,14 @@ export default function ReportViewer() {
     triggerExecution(`/action/${module}`, body);
   };
 
-  // ── SSE execution engine (sin cambios funcionales) ──
   const triggerExecution = (endpoint, body) => {
-    if (isRunning) {
-      console.warn('triggerExecution blocked: ya hay una tarea en ejecucion');
-      return;
-    }
-    
-    setProgress(null);
-    setIsRunning(true);
-    setLogs([{ type: 'system', text: `[SISTEMA] Iniciando ejecucion de ${endpoint.startsWith('/scan/') ? 'escaneo' : 'acciones'}...` }]);
-
-    const ctrl = new AbortController();
-    sseControllerRef.current = ctrl;
-
-    const timeoutMs = endpoint.startsWith('/action/') ? 660000 : 330000;
-    const timeoutId = setTimeout(() => {
-      setLogs(prev => [...prev, { type: 'error', text: '[ERROR] Timeout: la operación excedió el tiempo límite.' }]);
-      ctrl.abort();
-    }, timeoutMs);
-
-    const handleSSEEvent = (event, data) => {
-      if (event === 'progress') {
-        try { setProgress(JSON.parse(data)); } catch { /* progreso mal formado */ }
-      } else if (event === 'output') {
-        setLogs(prev => [...prev, { type: 'output', text: data }]);
-      } else if (event === 'error') {
-        setLogs(prev => [...prev, { type: 'error', text: data }]);
-      } else if (event === 'done') {
-        try {
-          const { exitCode, timedOut } = JSON.parse(data);
-          const statusText = exitCode === 0
-            ? 'Proceso completado exitosamente.'
-            : `Proceso terminado con código de salida: ${exitCode === null ? 'desconocido' : exitCode}.`;
-          
-          setLogs(prev => [...prev, { 
-            type: 'system', 
-            text: `\n[SISTEMA] ${statusText} ${timedOut ? '(Excedió el tiempo límite)' : ''}` 
-          }]);
-        } catch (parseErr) {
-          setLogs(prev => [...prev, { type: 'error', text: `[ERROR] Respuesta inesperada del servidor: ${parseErr.message}` }]);
-        }
-      }
-    };
-
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: ctrl.signal,
-        });
-
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(errJson.error || `HTTP ${res.status}`);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let currentEvent = 'message';
-        let currentData = [];
-
-        const flushFrame = () => {
-          if (currentData.length > 0) {
-            handleSSEEvent(currentEvent, currentData.join('\n'));
-          }
-          currentEvent = 'message';
-          currentData = [];
-        };
-
-        const consumeLine = (line) => {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            flushFrame();
-          } else if (trimmed.startsWith('event:')) {
-            currentEvent = trimmed.slice(6).trim();
-          } else if (trimmed.startsWith('data:')) {
-            currentData.push(trimmed.slice(5).trim());
-          }
-        };
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            if (buffer) consumeLine(buffer);
-            flushFrame();
-            break;
-          }
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            consumeLine(line);
-          }
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setLogs(prev => [...prev, { type: 'error', text: `[ERROR] Error de comunicación: ${err.message}` }]);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        setIsRunning(false);
-        setProgress(null);
-        fetchReport();
-        if (window.onDoneRefreshStatus) window.onDoneRefreshStatus();
-      }
-    })();
+    setNotice(null);
+    startRun(module, endpoint, body);
   };
 
   const abortExecution = () => {
-    if (sseControllerRef.current) {
-      sseControllerRef.current.abort();
-      setLogs(prev => [...prev, { type: 'system', text: '\n[SISTEMA] Operación cancelada por el operador.' }]);
-      setIsRunning(false);
-      setProgress(null);
-    }
+    if (runJobState.status === 'running') cancel(`run:${module}`);
+    if (scanJob.status === 'running') cancel(`scan:${module}`);
   };
 
   const getModuleTitle = () => MODULES[module]?.label || 'Detalles del Módulo';
@@ -502,6 +383,12 @@ export default function ReportViewer() {
     return (
       <>
         {oemModeSelector}
+        {generic.loadError && (
+          <div className="inline-error" role="alert" style={{ marginBottom: 'var(--space-3)' }}>
+            <span>No se pudieron cargar los elementos: {generic.loadError}</span>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={generic.load}>Reintentar</button>
+          </div>
+        )}
         <ItemCheckboxList
           items={generic.items}
           selected={generic.selected}
@@ -857,42 +744,7 @@ export default function ReportViewer() {
             </div>
           )}
 
-          {/* ── Adblock: listas + botón quitar ── */}
-          {module === 'adblock' && (
-            <div className="form-group">
-              <label className="form-label">Listas a usar:</label>
-              <p style={{ fontSize: '0.75rem', color: 'var(--color-ink-3)', marginBottom: '0.75rem' }}>
-                Se descargan al aplicar. Windows va a pedir permiso de
-                administrador para escribir el archivo hosts.
-              </p>
-              <div className="checkbox-list">
-                {adblockSources.map((f, idx) => (
-                  <label key={f.id} className="checkbox-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedSources[idx] || false}
-                      onChange={() => setSelectedSources(prev => ({ ...prev, [idx]: !prev[idx] }))}
-                      disabled={isRunning}
-                    />
-                    <span className="checkbox-label" title={f.name}>
-                      {f.name}
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--color-ink-3)' }}>
-                        {f.desc}
-                      </span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-              <button
-                className="btn btn-danger"
-                style={{ width: '100%', marginTop: 'var(--space-4)' }}
-                onClick={() => runAction({ adblockAction: 'remove' })}
-                disabled={isRunning}
-              >
-                Quitar el bloqueo
-              </button>
-            </div>
-          )}
+
 
           {/* ── RAM: 3 tiers con controles especiales ── */}
           {module === 'ram' && (

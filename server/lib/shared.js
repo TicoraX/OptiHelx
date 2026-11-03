@@ -2,11 +2,12 @@ import { spawn } from 'child_process';
 import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, appendFileSync } from 'fs';
 import { join, dirname, resolve, normalize } from 'path';
 import { fileURLToPath } from 'url';
+import { AsyncLocalStorage } from 'async_hooks';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // ponytail: override solo para el empaquetado Electron, donde __dirname cae dentro
 // de app.asar (solo lectura) y no hay carpetas de modulo reales para escribir reportes.
-export const PROJECT_ROOT = process.env.OPTIMIZADOR_DATA_DIR || resolve(__dirname, '..', '..');
+export const PROJECT_ROOT = process.env.OPTIHELX_DATA_DIR || process.env.OPTIMIZADOR_DATA_DIR || resolve(__dirname, '..', '..');
 
 // ── Resolver PATH completo del usuario ──
 // Cuando server.js arranca desde un proceso oculto, no hereda el PATH completo.
@@ -109,13 +110,6 @@ export const MODULES = Object.freeze({
     taskName: 'PrivacyOptimizer_Weekly',
     logFile: 'optimize-log.txt',
   }),
-  adblock: Object.freeze({
-    dir: join(PROJECT_ROOT, 'adblock'),
-    countsFile: 'adblock-counts.json',
-    reportPrefix: 'adblock-report',
-    taskName: 'AdBlock_Weekly',
-    logFile: 'optimize-log.txt',
-  }),
   gaming: Object.freeze({
     dir: join(PROJECT_ROOT, 'gaming-optimizer'),
     countsFile: 'gaming-counts.json',
@@ -144,53 +138,11 @@ export const MODULES = Object.freeze({
     taskName: 'OemDebloat_Monthly',
     logFile: 'optimize-log.txt',
   }),
-  timers: Object.freeze({
-    dir: join(PROJECT_ROOT, 'timers-optimizer'),
-    countsFile: 'timers-counts.json',
-    reportPrefix: 'timers-report',
-    taskName: 'TimersOptimizer_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
-  ghostdevices: Object.freeze({
-    dir: join(PROJECT_ROOT, 'ghostdevices-optimizer'),
-    countsFile: 'ghostdevices-counts.json',
-    reportPrefix: 'ghostdevices-report',
-    taskName: 'GhostDevices_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
   searchindex: Object.freeze({
     dir: join(PROJECT_ROOT, 'searchindex-optimizer'),
     countsFile: 'searchindex-counts.json',
     reportPrefix: 'searchindex-report',
     taskName: 'SearchIndex_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
-  dnsflush: Object.freeze({
-    dir: join(PROJECT_ROOT, 'dnsflush-optimizer'),
-    countsFile: 'dnsflush-counts.json',
-    reportPrefix: 'dnsflush-report',
-    taskName: 'DnsFlush_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
-  networkprivacy: Object.freeze({
-    dir: join(PROJECT_ROOT, 'networkprivacy-optimizer'),
-    countsFile: 'networkprivacy-counts.json',
-    reportPrefix: 'networkprivacy-report',
-    taskName: 'NetworkPrivacy_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
-  pagefile: Object.freeze({
-    dir: join(PROJECT_ROOT, 'pagefile-optimizer'),
-    countsFile: 'pagefile-counts.json',
-    reportPrefix: 'pagefile-report',
-    taskName: 'Pagefile_Monthly',
-    logFile: 'optimize-log.txt',
-  }),
-  werfault: Object.freeze({
-    dir: join(PROJECT_ROOT, 'werfault-optimizer'),
-    countsFile: 'werfault-counts.json',
-    reportPrefix: 'werfault-report',
-    taskName: 'WerFault_Monthly',
     logFile: 'optimize-log.txt',
   }),
   smartdisk: Object.freeze({
@@ -680,6 +632,13 @@ export function makeGuard(moduleKey, { dryRun, writeLog }) {
  * los hijos: winget, choco y npm dejan nietos corriendo despues del timeout,
  * potencialmente a mitad de una instalacion. taskkill /T recorre el arbol.
  */
+/**
+ * Contexto por request: runNativeOverSSE corre la tarea dentro de
+ * jobContext.run({ signal }), y spawnCapture lo lee sin que cada handler tenga
+ * que recibir opciones. Si el cliente se va, el signal aborta y mueren los hijos.
+ */
+export const jobContext = new AsyncLocalStorage();
+
 function killTree(proc) {
   if (!proc?.pid) return;
   try {
@@ -722,8 +681,21 @@ export function spawnCapture(cmd, args, timeoutMs = 120000) {
     let proc;
     let timedOut = false;
     let settled = false;
+    const signal = jobContext.getStore()?.signal;
+    if (signal?.aborted) {
+      resolve({ code: -1, stdout: '', stderr: 'Cancelado', aborted: true });
+      return;
+    }
+    const onAbort = () => {
+      if (settled || timedOut) return;
+      settled = true;
+      clearTimeout(timer);
+      killTree(proc);
+      resolve({ code: -1, stdout, stderr: 'Cancelado', aborted: true });
+    };
     const timer = setTimeout(() => {
       timedOut = true;
+      signal?.removeEventListener('abort', onAbort);
       killTree(proc);
       // Sin esto los listeners siguen acumulando salida de un proceso que ya
       // nadie espera.
@@ -738,10 +710,12 @@ export function spawnCapture(cmd, args, timeoutMs = 120000) {
       resolve({ code: -1, stdout: '', stderr: err.message });
       return;
     }
+    signal?.addEventListener('abort', onAbort, { once: true });
     const done = (code, errMsg) => {
       if (timedOut || settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       resolve({ code, stdout, stderr: errMsg || stderr });
     };
     proc.stdout?.on('data', (d) => { stdout += d; });

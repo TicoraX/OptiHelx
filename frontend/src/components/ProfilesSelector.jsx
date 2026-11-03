@@ -134,7 +134,8 @@ export default function ProfilesSelector({ onProfileApplied }) {
                 setError('El proceso finalizó con advertencias.');
               }
             } catch {
-              setResult({ ok: true, dryRun, profileId });
+              // Sin un done legible no hay prueba de exito: nunca se marca ok.
+              setError('No se pudo confirmar el resultado: la respuesta del servidor llegó ilegible.');
             }
           }
         };

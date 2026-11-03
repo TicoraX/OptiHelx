@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Ejecuta el escaneo de un modulo del Optimizador y muestra el resumen.
+    Ejecuta el escaneo de un modulo de OptiHelx y muestra el resumen.
 
 .DESCRIPTION
     Un solo script para los 9 modulos, invocado por las tareas programadas de
@@ -21,7 +21,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet('updates','cleanup','startup','ram','network','services','power','apps','privacy','adblock','gaming','integrity','contextmenu','oemdebloat','timers','ghostdevices','searchindex','dnsflush','networkprivacy','pagefile','werfault')]
+    [ValidateSet('updates','cleanup','startup','ram','network','services','power','apps','privacy','gaming','integrity','contextmenu','oemdebloat','searchindex','smartdisk','shadercache')]
     [string]$Module,
 
     [int]$Port = 3001
@@ -41,7 +41,7 @@ $headers = @{ 'Origin' = $base; 'Content-Type' = 'application/json' }
 try {
     Invoke-WebRequest -Uri "$base/api/health" -TimeoutSec 5 -UseBasicParsing | Out-Null
 } catch {
-    Show-Popup "Optimizador no esta corriendo. Abri la aplicacion y volve a intentar." "Optimizador - $Module"
+    Show-Popup "OptiHelx no esta corriendo. Abri la aplicacion y volve a intentar." "OptiHelx - $Module"
     exit 1
 }
 
@@ -50,7 +50,7 @@ try {
     Invoke-WebRequest -Uri "$base/api/scan/$Module" -Method Post -Headers $headers `
         -Body '{}' -TimeoutSec 600 -UseBasicParsing | Out-Null
 } catch {
-    Show-Popup "El escaneo de '$Module' fallo: $($_.Exception.Message)" "Optimizador - $Module"
+    Show-Popup "El escaneo de '$Module' fallo: $($_.Exception.Message)" "OptiHelx - $Module"
     exit 1
 }
 
@@ -64,7 +64,7 @@ try {
     $status = Invoke-WebRequest -Uri "$base/api/status" -TimeoutSec 30 -UseBasicParsing |
         Select-Object -ExpandProperty Content | ConvertFrom-Json
 } catch {
-    Show-Popup "Escaneo de '$Module' completado, pero no se pudo leer el resumen." "Optimizador - $Module"
+    Show-Popup "Escaneo de '$Module' completado, pero no se pudo leer el resumen." "OptiHelx - $Module"
     exit 0
 }
 
@@ -83,4 +83,4 @@ function Format-Counts($obj, $prefix = '') {
 
 $lines = Format-Counts $status.$Module
 
-Show-Popup (($lines -join "`n") + "`n`nAbri Optimizador para ver el detalle y actuar.") "Optimizador - $Module"
+Show-Popup (($lines -join "`n") + "`n`nAbri OptiHelx para ver el detalle y actuar.") "OptiHelx - $Module"
