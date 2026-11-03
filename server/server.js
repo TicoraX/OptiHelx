@@ -10,7 +10,7 @@ import {
   validateModule, validateDate, validateTask, validateTime, validateFrequency,
   validateWeekdays, validateIntervalDays, validateBooleanField, validateIndexList,
   validateDays, validateMinRamMB, normalizeSchTaskStatus,
-  findLatestReport, buildReportPath, safeHandler, loadItems, getScanTimeline,
+  findLatestReport, buildReportPath, safeHandler, loadItems, getScanTimeline, jobContext,
 } from './lib/shared.js';
 import { listAllChanges, undoChange } from './lib/changes.js';
 import { runCleanupScanNative, runCleanupActionNative } from './lib/cleanup.js';
@@ -476,32 +476,57 @@ function startNativeSSE(res) {
  * (ej. `schtasks /query` en un sistema con miles de tareas) deje la
  * conexion SSE abierta para siempre.
  */
-function runNativeOverSSE(res, task, timeoutMs = 120000) {
+// Timeouts por tipo. El frontend espera 330 s en escaneo y 660 s en accion:
+// el servidor corta antes para que el cliente reciba el `done` y no su propio timeout.
+const SCAN_TIMEOUT_MS = 300000;
+const ACTION_TIMEOUT_MS = 600000;
+
+// Single-flight: un trabajo por clave `scan:<modulo>` / `action:<modulo>`.
+const runningJobs = new Set();
+
+function runNativeOverSSE(res, task, timeoutMs = SCAN_TIMEOUT_MS, lockKey = null) {
+  if (lockKey && runningJobs.has(lockKey)) {
+    return res.status(409).json({ error: `Ya hay una operacion en curso (${lockKey}). Espera a que termine.` });
+  }
+  if (lockKey) runningJobs.add(lockKey);
+
   const send = startNativeSSE(res);
+  const controller = new AbortController();
   let settled = false;
+
+  // Un solo punto de cierre: libera el lock y aborta los hijos vivos.
+  const finish = () => {
+    settled = true;
+    clearTimeout(timer);
+    if (lockKey) runningJobs.delete(lockKey);
+    controller.abort();
+  };
 
   const timer = setTimeout(() => {
     if (settled) return;
-    settled = true;
+    finish();
     send('error', 'Tiempo de espera agotado.');
     send('done', { exitCode: 1, timedOut: true });
     res.end();
   }, timeoutMs);
 
+  // El cliente cerro la conexion antes del `done`: nadie espera el resultado.
+  res.on('close', () => {
+    if (!settled) finish();
+  });
+
   // Segundo canal: los modulos con pasos contables reportan avance por aca.
   // El frontend ya dibujaba la barra; hasta ahora nadie emitia el evento.
-  task((line) => send('output', line), (p) => send('progress', p))
+  jobContext.run({ signal: controller.signal }, () => task((line) => send('output', line), (p) => send('progress', p)))
     .then(() => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
+      finish();
       send('done', { exitCode: 0, timedOut: false });
       res.end();
     })
     .catch((err) => {
       if (settled) return;
-      settled = true;
-      clearTimeout(timer);
+      finish();
       send('error', err.message);
       send('done', { exitCode: 1, timedOut: false });
       res.end();
@@ -538,8 +563,7 @@ app.post('/api/scan/:module', safeHandler((req, res) => {
 
   // El diagnostico de red encadena ping sostenido, traceroute, MTU y DNS: pasa
   // holgadamente del minuto y medio por defecto.
-  const timeout = req.params.module === 'network' ? 300000 : undefined;
-  runNativeOverSSE(res, (onOutput, onProgress) => handler(...extraArgs, onOutput, onProgress), timeout);
+  runNativeOverSSE(res, (onOutput, onProgress) => handler(...extraArgs, onOutput, onProgress), SCAN_TIMEOUT_MS, `scan:${req.params.module}`);
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -838,10 +862,9 @@ app.post('/api/action/:module', safeHandler((req, res) => {
   // nativos en Node para evitar el cuelgue al spawnear desde este proceso
   // servidor (ver "Bug critico conocido" en PROJECT_CONTEXT.md).
   // Las acciones instalan/cambian cosas reales (winget/pip/npm/choco, registro,
-  // tareas) y pueden tardar mucho mas que un escaneo de solo lectura — ej.
-  // "winget upgrade --all" tardo 3m28s en una prueba real. Timeout mas alto
-  // que el default de runNativeOverSSE (2 min, pensado para escaneos).
-  const ACTION_TIMEOUT_MS = 600000;
+  // tareas) y pueden tardar mucho mas que un escaneo de solo lectura, por
+  // ejemplo "winget upgrade --all" tardo 3m28s en una prueba real: por eso
+  // usan ACTION_TIMEOUT_MS (10 min) y no SCAN_TIMEOUT_MS (5 min).
 
   // Estos modulos solo actuan sobre lo que el usuario selecciono. Una peticion
   // sin seleccion no es un no-op inofensivo: es la firma de una llamada que no
@@ -884,7 +907,7 @@ app.post('/api/action/:module', safeHandler((req, res) => {
         // Omisión silenciosa para no interrumpir el flujo si el escaneo complementario falla
       }
     }
-  }, ACTION_TIMEOUT_MS);
+  }, ACTION_TIMEOUT_MS, `action:${req.params.module}`);
 }));
 
 // ═══════════════════════════════════════════════════════
@@ -1185,6 +1208,7 @@ app.use((err, _req, res, _next) => {
 // ═══════════════════════════════════════════════════════
 const HOST = '127.0.0.1'; // Previene exposicion a LAN / internet
 
+export { app, SCAN_HANDLERS };
 export let serverInstance = null;
 
 export function stopServer() {

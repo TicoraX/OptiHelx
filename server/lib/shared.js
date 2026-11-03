@@ -2,6 +2,7 @@ import { spawn } from 'child_process';
 import { readFileSync, existsSync, readdirSync, mkdirSync, writeFileSync, appendFileSync } from 'fs';
 import { join, dirname, resolve, normalize } from 'path';
 import { fileURLToPath } from 'url';
+import { AsyncLocalStorage } from 'async_hooks';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // ponytail: override solo para el empaquetado Electron, donde __dirname cae dentro
@@ -631,6 +632,13 @@ export function makeGuard(moduleKey, { dryRun, writeLog }) {
  * los hijos: winget, choco y npm dejan nietos corriendo despues del timeout,
  * potencialmente a mitad de una instalacion. taskkill /T recorre el arbol.
  */
+/**
+ * Contexto por request: runNativeOverSSE corre la tarea dentro de
+ * jobContext.run({ signal }), y spawnCapture lo lee sin que cada handler tenga
+ * que recibir opciones. Si el cliente se va, el signal aborta y mueren los hijos.
+ */
+export const jobContext = new AsyncLocalStorage();
+
 function killTree(proc) {
   if (!proc?.pid) return;
   try {
@@ -673,8 +681,21 @@ export function spawnCapture(cmd, args, timeoutMs = 120000) {
     let proc;
     let timedOut = false;
     let settled = false;
+    const signal = jobContext.getStore()?.signal;
+    if (signal?.aborted) {
+      resolve({ code: -1, stdout: '', stderr: 'Cancelado', aborted: true });
+      return;
+    }
+    const onAbort = () => {
+      if (settled || timedOut) return;
+      settled = true;
+      clearTimeout(timer);
+      killTree(proc);
+      resolve({ code: -1, stdout, stderr: 'Cancelado', aborted: true });
+    };
     const timer = setTimeout(() => {
       timedOut = true;
+      signal?.removeEventListener('abort', onAbort);
       killTree(proc);
       // Sin esto los listeners siguen acumulando salida de un proceso que ya
       // nadie espera.
@@ -689,10 +710,12 @@ export function spawnCapture(cmd, args, timeoutMs = 120000) {
       resolve({ code: -1, stdout: '', stderr: err.message });
       return;
     }
+    signal?.addEventListener('abort', onAbort, { once: true });
     const done = (code, errMsg) => {
       if (timedOut || settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener('abort', onAbort);
       resolve({ code, stdout, stderr: errMsg || stderr });
     };
     proc.stdout?.on('data', (d) => { stdout += d; });
