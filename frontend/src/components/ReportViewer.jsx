@@ -7,6 +7,7 @@ import { GENERIC_PANEL_CONFIG } from './panelConfig';
 import { API_BASE } from '../config';
 import { renderReport } from '../lib/markdown';
 import { MODULES } from '../modules';
+import { useJob, startRun, cancel } from '../lib/jobs';
 import { useModuleItems, GENERIC_MODULES } from '../hooks/useModuleItems';
 
 const CleanupBreakdownChart = lazy(() => import('./CleanupBreakdownChart'));
@@ -35,6 +36,7 @@ export default function ReportViewer() {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const copyResetTimerRef = useRef(null);
+  const seenFinishRef = useRef(null);
 
   const handleCopyReport = async () => {
     if (!report?.content) return;
@@ -92,10 +94,14 @@ export default function ReportViewer() {
   const [oemMode, setOemMode] = useState('demand');
 
   // Terminal & SSE States
-  const [logs, setLogs] = useState([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [progress, setProgress] = useState(null);
-  const sseControllerRef = useRef(null);
+  // El estado vive en el store (lib/jobs.js): navegar no aborta la operacion.
+  const scanJob = useJob(`scan:${module}`);
+  const runJobState = useJob(`run:${module}`);
+  const [notice, setNotice] = useState(null);
+  const isRunning = scanJob.status === 'running' || runJobState.status === 'running';
+  const active = (runJobState.startedAt ?? 0) > (scanJob.startedAt ?? 0) ? runJobState : scanJob;
+  const logs = active.logs.length ? active.logs : (notice ? [notice] : []);
+  const progress = active.progress;
 
   const noneChecked = (list) => Object.fromEntries(list.map((_, i) => [i, false]));
 
@@ -177,16 +183,20 @@ export default function ReportViewer() {
 
   useEffect(() => {
     fetchReport();
-    setLogs([]);
-    setIsRunning(false);
-    
+    setNotice(null);
+
     return () => {
-      if (sseControllerRef.current) {
-        sseControllerRef.current.abort();
-      }
       if (copyResetTimerRef.current) clearTimeout(copyResetTimerRef.current);
     };
   }, [fetchReport]);
+
+  // Al terminar un job de este modulo (aunque haya sido lanzado antes de entrar), recargar el reporte.
+  useEffect(() => {
+    const prev = seenFinishRef.current;
+    seenFinishRef.current = { module, at: active.finishedAt };
+    // Al entrar o cambiar de modulo ya carga el efecto de fetchReport.
+    if (prev && prev.module === module && prev.at !== active.finishedAt) fetchReport();
+  }, [module, active.finishedAt, fetchReport]);
 
   const handleCheckboxChange = (type, index) => {
     if (type === 'program') {
@@ -259,10 +269,10 @@ export default function ReportViewer() {
   // ── Action ──
   const runAction = ({ dryRun = false } = {}) => {
     if (!hasSelected && module !== 'power' && module !== 'network') {
-      setLogs([{
+      setNotice({
         type: 'error',
         text: '[AVISO] No hay ningún elemento seleccionado. Marcá las casillas de los elementos a optimizar antes de ejecutar.',
-      }]);
+      });
       return;
     }
 
@@ -323,126 +333,14 @@ export default function ReportViewer() {
     triggerExecution(`/action/${module}`, body);
   };
 
-  // ── SSE execution engine (sin cambios funcionales) ──
   const triggerExecution = (endpoint, body) => {
-    if (isRunning) {
-      console.warn('triggerExecution blocked: ya hay una tarea en ejecucion');
-      return;
-    }
-    
-    setProgress(null);
-    setIsRunning(true);
-    setLogs([{ type: 'system', text: `[SISTEMA] Iniciando ejecucion de ${endpoint.startsWith('/scan/') ? 'escaneo' : 'acciones'}...` }]);
-
-    const ctrl = new AbortController();
-    sseControllerRef.current = ctrl;
-
-    const timeoutMs = endpoint.startsWith('/action/') ? 660000 : 330000;
-    const timeoutId = setTimeout(() => {
-      setLogs(prev => [...prev, { type: 'error', text: '[ERROR] Timeout: la operación excedió el tiempo límite.' }]);
-      ctrl.abort();
-    }, timeoutMs);
-
-    const handleSSEEvent = (event, data) => {
-      if (event === 'progress') {
-        try { setProgress(JSON.parse(data)); } catch { /* progreso mal formado */ }
-      } else if (event === 'output') {
-        setLogs(prev => [...prev, { type: 'output', text: data }]);
-      } else if (event === 'error') {
-        setLogs(prev => [...prev, { type: 'error', text: data }]);
-      } else if (event === 'done') {
-        try {
-          const { exitCode, timedOut } = JSON.parse(data);
-          const statusText = exitCode === 0
-            ? 'Proceso completado exitosamente.'
-            : `Proceso terminado con código de salida: ${exitCode === null ? 'desconocido' : exitCode}.`;
-          
-          setLogs(prev => [...prev, { 
-            type: 'system', 
-            text: `\n[SISTEMA] ${statusText} ${timedOut ? '(Excedió el tiempo límite)' : ''}` 
-          }]);
-        } catch (parseErr) {
-          setLogs(prev => [...prev, { type: 'error', text: `[ERROR] Respuesta inesperada del servidor: ${parseErr.message}` }]);
-        }
-      }
-    };
-
-    (async () => {
-      try {
-        const res = await fetch(`${API_BASE}${endpoint}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-          signal: ctrl.signal,
-        });
-
-        if (!res.ok) {
-          const errJson = await res.json().catch(() => ({ error: res.statusText }));
-          throw new Error(errJson.error || `HTTP ${res.status}`);
-        }
-
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let currentEvent = 'message';
-        let currentData = [];
-
-        const flushFrame = () => {
-          if (currentData.length > 0) {
-            handleSSEEvent(currentEvent, currentData.join('\n'));
-          }
-          currentEvent = 'message';
-          currentData = [];
-        };
-
-        const consumeLine = (line) => {
-          const trimmed = line.trim();
-          if (!trimmed) {
-            flushFrame();
-          } else if (trimmed.startsWith('event:')) {
-            currentEvent = trimmed.slice(6).trim();
-          } else if (trimmed.startsWith('data:')) {
-            currentData.push(trimmed.slice(5).trim());
-          }
-        };
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            if (buffer) consumeLine(buffer);
-            flushFrame();
-            break;
-          }
-          buffer += decoder.decode(value, { stream: true });
-
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            consumeLine(line);
-          }
-        }
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          setLogs(prev => [...prev, { type: 'error', text: `[ERROR] Error de comunicación: ${err.message}` }]);
-        }
-      } finally {
-        clearTimeout(timeoutId);
-        setIsRunning(false);
-        setProgress(null);
-        fetchReport();
-        if (window.onDoneRefreshStatus) window.onDoneRefreshStatus();
-      }
-    })();
+    setNotice(null);
+    startRun(module, endpoint, body);
   };
 
   const abortExecution = () => {
-    if (sseControllerRef.current) {
-      sseControllerRef.current.abort();
-      setLogs(prev => [...prev, { type: 'system', text: '\n[SISTEMA] Operación cancelada por el operador.' }]);
-      setIsRunning(false);
-      setProgress(null);
-    }
+    if (runJobState.status === 'running') cancel(`run:${module}`);
+    if (scanJob.status === 'running') cancel(`scan:${module}`);
   };
 
   const getModuleTitle = () => MODULES[module]?.label || 'Detalles del Módulo';

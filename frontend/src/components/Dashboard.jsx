@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MODULES, MODULE_KEYS } from '../modules';
 import { ModuleIcon } from './ModuleIcon';
@@ -6,6 +6,7 @@ import SystemTelemetry from './SystemTelemetry';
 import HealthScoreCard from './HealthScoreCard';
 import ProfilesSelector from './ProfilesSelector';
 import { API_BASE } from '../config';
+import { useJob, useAnyRunning, startScan, scanAll, cancel, clearError, SCAN_ALL } from '../lib/jobs';
 
 // recharts pesa ~500 KB y alimenta un solo grafico que ni siquiera se muestra
 // si no hay historial de arranque. Antes se importaba estatico.
@@ -56,7 +57,9 @@ function usePersistedModuleLayout() {
   return { order, hidden, moveModule, toggleHidden };
 }
 
-function ModuleCard({ moduleKey, data, scanning, onScan, onOpen, style, revealIndex }) {
+function ModuleCard({ moduleKey, data, onOpen, style, revealIndex }) {
+  const job = useJob(`scan:${moduleKey}`);
+  const scanning = job.status === 'running';
   const mod = MODULES[moduleKey];
   const metrics = data ? mod.metrics(data) : [];
   const stale = !data?.lastScan;
@@ -91,13 +94,19 @@ function ModuleCard({ moduleKey, data, scanning, onScan, onOpen, style, revealIn
         )}
       </div>
 
+      {job.status === 'error' && (
+        <p role="alert" style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>
+          {job.error}
+        </p>
+      )}
+
       <footer className="card-footer">
         <button
           className="btn btn-secondary"
-          onClick={() => onScan(moduleKey)}
+          onClick={() => startScan(moduleKey)}
           disabled={scanning}
         >
-          {scanning ? 'Escaneando…' : 'Escanear'}
+          {scanning ? 'Escaneando…' : job.status === 'error' ? 'Reintentar' : 'Escanear'}
         </button>
         <button className="btn btn-quiet" onClick={() => onOpen(moduleKey)}>
           Abrir
@@ -109,113 +118,21 @@ function ModuleCard({ moduleKey, data, scanning, onScan, onOpen, style, revealIn
 
 export default function Dashboard({ systemStatus, loading, error, onRefreshStatus }) {
   const navigate = useNavigate();
-  const [scanning, setScanning] = useState({});
   const [customizing, setCustomizing] = useState(false);
   const { order, hidden, moveModule, toggleHidden } = usePersistedModuleLayout();
 
-  const handleScan = useCallback(async (moduleKey) => {
-    let wasScanning = false;
-    setScanning((prev) => {
-      if (prev[moduleKey]) {
-        wasScanning = true;
-        return prev;
-      }
-      return { ...prev, [moduleKey]: true };
-    });
-    if (wasScanning) return;
+  const all = useJob(SCAN_ALL);
+  const scanningAll = all.status === 'running';
+  const anyScanning = useAnyRunning('scan:');
+  const scanAllProgress = { current: all.current ?? 0, total: all.total ?? 0, module: MODULES[all.module]?.label || all.module || '' };
 
-    let abortReason = null;
-    const ctrl = new AbortController();
-    const timeout = setTimeout(() => {
-      abortReason = 'timeout';
-      ctrl.abort();
-    }, 330000);
-
-    try {
-      const response = await fetch(`${API_BASE}/scan/${moduleKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-        signal: ctrl.signal,
-      });
-
-      if (!response.ok) throw new Error(`El servidor respondió ${response.status}`);
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No se pudo inicializar la lectura del stream SSE');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (trimmed.startsWith('event: done')) {
-            abortReason = 'done';
-            break;
-          }
-        }
-        if (abortReason === 'done') break;
-      }
-    } catch (err) {
-      if (abortReason === 'timeout') {
-        console.error(`Escaneo de ${moduleKey}: tiempo de espera agotado (330s)`);
-      } else if (abortReason !== 'done' && err.name !== 'AbortError') {
-        console.error(`Escaneo de ${moduleKey}:`, err);
-      }
-    } finally {
-      clearTimeout(timeout);
-      setScanning((prev) => ({ ...prev, [moduleKey]: false }));
-      onRefreshStatus();
-    }
-  }, [onRefreshStatus]);
-
-  const scanAllAbortRef = useRef(null);
-  const [scanningAll, setScanningAll] = useState(false);
-  const [scanAllProgress, setScanAllProgress] = useState({ current: 0, total: 0, module: '' });
-
-  const cancelScanAll = useCallback(() => {
-    if (scanAllAbortRef.current) {
-      scanAllAbortRef.current.abort();
-      scanAllAbortRef.current = null;
-    }
-    setScanningAll(false);
-  }, []);
-
-  const handleScanAll = useCallback(async () => {
+  const handleScanAll = () => {
     if (scanningAll) {
-      cancelScanAll();
+      cancel(SCAN_ALL);
       return;
     }
-
-    const targetKeys = order.filter((id) => !hidden.includes(id));
-    if (targetKeys.length === 0) return;
-
-    setScanningAll(true);
-    const abortCtrl = new AbortController();
-    scanAllAbortRef.current = abortCtrl;
-
-    for (let i = 0; i < targetKeys.length; i++) {
-      if (abortCtrl.signal.aborted) break;
-      const key = targetKeys[i];
-      const label = MODULES[key]?.label || key;
-      setScanAllProgress({ current: i + 1, total: targetKeys.length, module: label });
-
-      try {
-        await handleScan(key);
-      } catch (err) {
-        console.error(`Error escaneando ${key}:`, err);
-      }
-    }
-
-    setScanningAll(false);
-    scanAllAbortRef.current = null;
-    onRefreshStatus();
-  }, [scanningAll, order, hidden, handleScan, onRefreshStatus, cancelScanAll]);
+    scanAll(order.filter((id) => !hidden.includes(id)));
+  };
 
   if (loading) {
     return (
@@ -274,7 +191,7 @@ export default function Dashboard({ systemStatus, loading, error, onRefreshStatu
           <button
             className={`btn ${scanningAll ? 'btn-danger' : 'btn-primary'}`}
             onClick={handleScanAll}
-            disabled={Object.values(scanning).some(Boolean) && !scanningAll}
+            disabled={anyScanning && !scanningAll}
             title={scanningAll ? 'Detener escaneo general' : 'Escanear todos los módulos del sistema'}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
           >
@@ -392,11 +309,18 @@ export default function Dashboard({ systemStatus, loading, error, onRefreshStatu
           <button
             type="button"
             className="btn btn-sm btn-secondary"
-            onClick={cancelScanAll}
+            onClick={() => cancel(SCAN_ALL)}
             style={{ fontSize: 'var(--text-xs)' }}
           >
             Detener
           </button>
+        </div>
+      )}
+
+      {all.status === 'error' && (
+        <div className="glass-panel" role="alert" style={{ padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-5)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--color-danger)' }}>{all.error}</span>
+          <button type="button" className="btn btn-sm btn-secondary" onClick={() => clearError(SCAN_ALL)}>Cerrar</button>
         </div>
       )}
 
@@ -412,8 +336,6 @@ export default function Dashboard({ systemStatus, loading, error, onRefreshStatu
             key={key}
             moduleKey={key}
             data={systemStatus?.[key]}
-            scanning={!!scanning[key]}
-            onScan={handleScan}
             onOpen={(k) => navigate(`/report/${k}`)}
             revealIndex={i}
           />

@@ -11,6 +11,7 @@ import CommandPalette from './components/CommandPalette';
 import { MODULES, MODULE_KEYS } from './modules';
 import { ModuleIcon } from './components/ModuleIcon';
 import { API_BASE } from './config';
+import { setOnJobFinished } from './lib/jobs';
 
 export default function App() {
   const [systemStatus, setSystemStatus] = useState(null);
@@ -87,15 +88,15 @@ export default function App() {
       fetchStatus({ maxRetries: 1, retryDelay: 500, showSkeleton: false });
     }, 30000);
 
-    // Canal para que ReportViewer pida un refresco al terminar una accion.
-    window.onDoneRefreshStatus = () => {
+    // Gancho del store de jobs: refresca el estado al terminar cualquier operacion.
+    setOnJobFinished(() => {
       fetchStatus({ maxRetries: 2, retryDelay: 400, showSkeleton: false });
-    };
+    });
 
     return () => {
       isMountedRef.current = false;
       clearInterval(interval);
-      delete window.onDoneRefreshStatus;
+      setOnJobFinished(null);
     };
   }, [fetchStatus]);
 
